@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Price It</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBp30iDrnA5n1uyT75m1HL8imdEl0JHOMc",
+    authDomain: "crowell-item-compute.firebaseapp.com",
+    databaseURL: "https://crowell-item-compute-default-rtdb.firebaseio.com",
+    projectId: "crowell-item-compute",
+    storageBucket: "crowell-item-compute.firebasestorage.app",
+    messagingSenderId: "93994335685",
+    appId: "1:93994335365:web:da03d2518c9828b2e2fdec"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  window._db=db; window._dbRef=ref; window._dbSet=set;
+  window._dbGet=get; window._dbOnValue=onValue; window._dbRemove=remove;
+  window._auth=auth;
+  window._signInWithEmailAndPassword=signInWithEmailAndPassword;
+  window._createUserWithEmailAndPassword=createUserWithEmailAndPassword;
+  window._signInWithPopup=signInWithPopup;
+  window._googleProvider=googleProvider;
+  window._signOut=signOut;
+  window._updateProfile=updateProfile;
+  window._onAuthStateChanged=onAuthStateChanged;
+
+  // Wait for auth state before signaling ready
+  onAuthStateChanged(auth, (user) => {
+    window._currentUser = user;
+    if(!window._firebaseReady){
+      window._firebaseReady=true;
+      window.dispatchEvent(new Event('firebase-ready'));
+    } else {
+      window.dispatchEvent(new CustomEvent('auth-changed', {detail: user}));
+    }
+  });
+</script>
+<style>
+:root { --bg:#0f0f0f; --surface:#1a1a1a; --border:#2a2a2a; --accent:#c8f04c; --accent2:#4cf0b0; --text:#f0ede8; --muted:#666; --danger:#f04c4c; --info:#4ca8f0; }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+
+header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.logo-mark{width:30px;height:30px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:#0f0f0f;flex-shrink:0;}
+header h1{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.5px;flex:1;}
+header h1 span{color:var(--accent);}
+.header-user{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;}
+.user-dot{width:8px;height:8px;background:var(--accent2);border-radius:50%;}
+.change-name-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:4px;}
+.change-name-btn:hover{color:var(--text);}
+
+.app{display:flex;flex:1;height:calc(100vh - 61px);overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:240px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.sidebar-top{padding:10px 12px 6px;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sidebar-action-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;}
+.sidebar-action-btn:hover{opacity:0.7;}
+.sidebar-lists{flex:1;overflow-y:auto;padding:4px 6px 8px;}
+.sidebar-divider{height:1px;background:var(--border);margin:4px 6px;}
+
+/* top-level list row */
+.list-group{margin-bottom:2px;}
+.list-row{display:flex;align-items:center;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--muted);transition:all 0.15s;gap:5px;user-select:none;}
+.list-row:hover{background:var(--surface);color:var(--text);}
+.list-row.active{background:var(--surface);color:var(--accent);font-weight:500;}
+.list-row.drag-over{background:rgba(200,240,76,0.1);border:1px dashed var(--accent);}
+.list-row[draggable]{cursor:grab;}
+.list-row[draggable]:active{cursor:grabbing;}
+.expand-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0 2px;width:14px;flex-shrink:0;transition:transform 0.15s;}
+.expand-btn.open{transform:rotate(90deg);}
+.list-row-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.list-row-actions{display:flex;gap:2px;opacity:0;transition:opacity 0.15s;}
+.list-row:hover .list-row-actions{opacity:1;}
+.row-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:3px;transition:color 0.15s;}
+.row-btn:hover{color:var(--accent);}
+.row-btn.del:hover{color:var(--danger);}
+.shared-dot{width:5px;height:5px;background:var(--info);border-radius:50%;flex-shrink:0;}
+
+/* sublists */
+.sublist-group{padding-left:16px;}
+.sublist-row{display:flex;align-items:center;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:12px;color:var(--muted);transition:all 0.15s;gap:5px;user-select:none;}
+.sublist-row:hover{background:var(--surface);color:var(--text);}
+.sublist-row.active{background:var(--surface);color:var(--accent);font-weight:500;}
+.sublist-row.drag-over{background:rgba(200,240,76,0.1);border:1px dashed var(--accent);}
+.sublist-row[draggable]{cursor:grab;}
+.sublist-row-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sublist-row-actions{display:flex;gap:2px;opacity:0;transition:opacity 0.15s;}
+.sublist-row:hover .sublist-row-actions{opacity:1;}
+
+/* shared section */
+.shared-section{padding:4px 6px 8px;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.list-header-bar{padding:10px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;min-height:46px;flex-shrink:0;}
+.list-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;flex:1;}
+.breadcrumb{font-size:11px;color:var(--muted);}
+.breadcrumb span{color:var(--accent);cursor:pointer;}
+.breadcrumb span:hover{text-decoration:underline;}
+.share-badge{display:flex;align-items:center;gap:6px;background:rgba(76,168,240,0.1);border:1px solid rgba(76,168,240,0.3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--info);cursor:pointer;}
+.share-badge:hover{background:rgba(76,168,240,0.2);}
+.share-code-inline{font-family:'DM Mono',monospace;font-weight:500;letter-spacing:1px;}
+.share-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.share-btn:hover{border-color:var(--accent);color:var(--accent);}
+.sync-indicator{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);}
+.sync-dot.syncing{animation:pulse 1s ease-in-out infinite;background:var(--accent);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.input-area{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;flex-shrink:0;}
+.input-group{display:flex;flex-direction:column;gap:4px;}
+label{font-size:10px;color:var(--muted);letter-spacing:0.5px;font-weight:500;text-transform:uppercase;}
+input[type="text"]{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 11px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.15s;}
+input[type="text"]:focus{border-color:var(--accent);}
+textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 11px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;transition:border-color 0.15s;resize:vertical;width:100%;min-height:52px;}
+textarea:focus{border-color:var(--accent);}
+#item-name{width:210px;}
+#item-age{width:110px;}
+.compute-btn{background:var(--accent);color:#0f0f0f;border:none;border-radius:6px;padding:9px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:opacity 0.15s,transform 0.1s;white-space:nowrap;}
+.compute-btn:hover{opacity:0.9;transform:translateY(-1px);}
+.compute-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+
+.items-area{flex:1;overflow-y:auto;padding:14px 20px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--muted);text-align:center;}
+.empty-icon{font-size:32px;margin-bottom:4px;}
+.empty-state p{font-size:14px;}
+.empty-state small{font-size:12px;color:#444;}
+.items-grid{display:flex;flex-direction:column;gap:9px;}
+
+/* room divider in combined view */
+.room-divider{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--muted);padding:8px 0 4px;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid var(--border);margin-bottom:6px;}
+
+.item-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px;animation:slideIn 0.2s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.item-card.loading{opacity:0.6;}
+.item-card.excluded{opacity:0.45;}
+.item-card-main{display:grid;grid-template-columns:1fr auto;gap:8px;}
+.item-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.item-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.item-age-badge{font-family:'DM Mono',monospace;font-size:10px;background:#222;color:var(--muted);padding:2px 7px;border-radius:20px;}
+.item-by{font-size:10px;color:#555;margin-left:auto;}
+.item-values{display:flex;gap:18px;margin-top:7px;}
+.val-block{display:flex;flex-direction:column;gap:2px;}
+.val-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.val-number{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;}
+.val-current{color:var(--accent2);}
+.val-replace{color:var(--accent);}
+.item-summary{margin-top:7px;font-size:11px;color:#777;line-height:1.5;border-top:1px solid var(--border);padding-top:7px;}
+.item-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.icon-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:3px;border-radius:4px;transition:color 0.15s;}
+.icon-btn:hover{color:var(--danger);}
+
+.include-row{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:8px;border-top:1px solid var(--border);}
+.include-label{font-size:11px;color:var(--muted);}
+.toggle-switch{position:relative;width:32px;height:18px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:#333;border-radius:18px;cursor:pointer;transition:background 0.2s;}
+.toggle-slider:before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#888;border-radius:50%;transition:all 0.2s;}
+.toggle-switch input:checked + .toggle-slider{background:rgba(200,240,76,0.3);}
+.toggle-switch input:checked + .toggle-slider:before{background:var(--accent);transform:translateX(14px);}
+
+.comment-row{margin-top:8px;}
+.comment-toggle-btn{background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;}
+.comment-toggle-btn:hover{color:var(--text);}
+.comment-box{margin-top:6px;display:none;}
+.comment-box.open{display:block;}
+.comment-save-btn{margin-top:4px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer;}
+.comment-save-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Custom price override */
+.custom-price-row{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.custom-price-input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 9px;font-family:'DM Mono',monospace;font-size:13px;width:110px;outline:none;transition:border-color 0.15s;}
+.custom-price-input:focus{border-color:var(--accent);}
+.custom-price-input:disabled{opacity:0.35;cursor:not-allowed;}
+.custom-price-label{font-size:11px;color:var(--muted);}
+.custom-price-active{color:var(--accent);font-weight:500;}
+.use-price-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.use-price-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(200,240,76,0.08);}
+.use-price-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Quantity control */
+.qty-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.qty-label{font-size:11px;color:var(--muted);}
+.qty-ctrl{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:5px;overflow:hidden;}
+.qty-btn{background:var(--surface);border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:3px 9px;transition:all 0.15s;line-height:1;}
+.qty-btn:hover{background:var(--border);color:var(--text);}
+.qty-num{background:var(--bg);border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;width:42px;text-align:center;padding:3px 0;outline:none;}
+.qty-note{font-size:10px;color:var(--muted);font-style:italic;}
+.comment-display{margin-top:6px;font-size:11px;color:#888;font-style:italic;}
+
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.list-total{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:24px;font-family:'DM Mono',monospace;font-size:12px;flex-wrap:wrap;background:#111;flex-shrink:0;}
+.total-group{display:flex;flex-direction:column;gap:2px;}
+.total-label{color:var(--muted);}
+.total-val-current{color:var(--accent2);font-size:15px;font-weight:500;}
+.total-val-replace{color:var(--accent);font-size:15px;font-weight:500;}
+
+/* modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:100;}
+.modal-overlay.open{display:flex;}
+.modal{background:#1c1c1c;border:1px solid var(--border);border-radius:14px;padding:24px;width:340px;max-width:92vw;}
+.modal h3{font-family:'Syne',sans-serif;font-size:16px;margin-bottom:6px;}
+.modal p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+.modal input[type="text"]{width:100%;margin-bottom:12px;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;}
+.btn-ghost:hover{border-color:var(--muted);}
+.modal-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.modal-tab{padding:8px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
+.modal-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.error-msg{color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:10px;}
+.code-display{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:12px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.code-big{font-family:'DM Mono',monospace;font-size:26px;font-weight:500;letter-spacing:4px;color:var(--accent);}
+.copy-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+.name-prompt-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;}
+.name-prompt-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:340px;max-width:92vw;text-align:center;}
+.name-prompt-box .logo-mark{margin:0 auto 16px;width:44px;height:44px;font-size:18px;}
+.name-prompt-box h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px;}
+.name-prompt-box h2 span{color:var(--accent);}
+.name-prompt-box p{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.name-prompt-box input[type="text"]{width:100%;margin-bottom:12px;text-align:center;font-size:15px;}
+
+/* ── AUTH MODAL ── */
+.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:300;}
+.auth-overlay.open{display:flex;}
+.auth-box{background:#1c1c1c;border:1px solid var(--border);border-radius:16px;padding:32px;width:380px;max-width:94vw;}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.auth-logo .logo-mark{width:36px;height:36px;font-size:16px;}
+.auth-logo h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;}
+.auth-logo h2 span{color:var(--accent);}
+.auth-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.auth-tab{padding:8px 18px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
+.auth-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.auth-field label{font-size:11px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;}
+.auth-field input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.15s;width:100%;}
+.auth-field input:focus{border-color:var(--accent);}
+.auth-submit{background:var(--accent);color:#0f0f0f;border:none;border-radius:8px;padding:11px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;width:100%;transition:opacity 0.15s;margin-top:4px;}
+.auth-submit:hover{opacity:0.9;}
+.auth-submit:disabled{opacity:0.4;cursor:not-allowed;}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:12px;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;width:100%;transition:border-color 0.15s;}
+.google-btn:hover{border-color:var(--muted);}
+.google-icon{width:18px;height:18px;}
+.auth-error{color:var(--danger);font-size:12px;margin-top:-4px;margin-bottom:8px;min-height:16px;}
+.auth-footer{text-align:center;font-size:12px;color:var(--muted);margin-top:16px;}
+
+/* ── PRO GATE ── */
+.pro-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:250;}
+.pro-overlay.open{display:flex;}
+.pro-box{background:#1c1c1c;border:1px solid var(--border);border-radius:16px;padding:32px;width:380px;max-width:94vw;text-align:center;}
+.pro-box h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px;}
+.pro-box h3 span{color:var(--accent);}
+.pro-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.pro-features{text-align:left;background:var(--bg);border-radius:8px;padding:14px 16px;margin-bottom:20px;}
+.pro-features div{font-size:13px;color:var(--text);padding:4px 0;display:flex;align-items:center;gap:8px;}
+.pro-features div span{color:var(--accent);}
+.pro-upgrade-btn{background:var(--accent);color:#0f0f0f;border:none;border-radius:8px;padding:12px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-bottom:10px;transition:opacity 0.15s;}
+.pro-upgrade-btn:hover{opacity:0.9;}
+.pro-code-row{display:flex;gap:8px;margin-bottom:10px;}
+.pro-code-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;letter-spacing:2px;transition:border-color 0.15s;}
+.pro-code-input:focus{border-color:var(--accent);}
+.pro-code-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:9px 14px;font-size:13px;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+.pro-code-btn:hover{border-color:var(--accent);color:var(--accent);}
+.pro-dismiss{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;width:100%;}
+.pro-dismiss:hover{color:var(--text);}
+.pro-badge{background:rgba(200,240,76,0.15);color:var(--accent);border:1px solid rgba(200,240,76,0.3);border-radius:20px;font-size:10px;font-weight:700;padding:2px 8px;letter-spacing:0.5px;font-family:'DM Mono',monospace;}
+.free-badge{background:rgba(102,102,102,0.15);color:var(--muted);border:1px solid var(--border);border-radius:20px;font-size:10px;font-weight:700;padding:2px 8px;letter-spacing:0.5px;font-family:'DM Mono',monospace;cursor:pointer;}
+.free-badge:hover{border-color:var(--accent);color:var(--accent);}
+.item-limit-bar{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.item-limit-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.item-limit-fill{height:100%;background:var(--accent2);border-radius:2px;transition:width 0.3s;}
+.item-limit-fill.near{background:#f0a84c;}
+.item-limit-fill.full{background:var(--danger);}
+
+</head>
+<body>
+
+<!-- Auth Modal -->
+<div class="auth-overlay open" id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="logo-mark">P</div>
+      <h2>Price <span>It</span></h2>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')">Sign In</div>
+      <div class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">Create Account</div>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <div id="auth-panel-login">
+      <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" autocomplete="email"/></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="login-password" placeholder="Password" autocomplete="current-password"/></div>
+      <button class="auth-submit" id="login-btn" onclick="doEmailLogin()">Sign In</button>
+    </div>
+    <div id="auth-panel-signup" style="display:none">
+      <div class="auth-field"><label>Display Name</label><input type="text" id="signup-name" placeholder="Your first name" autocomplete="given-name" maxlength="30"/></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com" autocomplete="email"/></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password"/></div>
+      <button class="auth-submit" id="signup-btn" onclick="doEmailSignup()">Create Account</button>
+    </div>
+    <div class="auth-divider">or</div>
+    <button class="google-btn" onclick="doGoogleSignIn()">
+      <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-footer">By signing in you agree to our terms of service.</div>
+  </div>
+</div>
+
+<!-- Pro Gate Modal -->
+<div class="pro-overlay" id="pro-overlay">
+  <div class="pro-box">
+    <div style="font-size:28px;margin-bottom:12px;">🔒</div>
+    <h3>Upgrade to <span>Pro</span></h3>
+    <p id="pro-gate-msg">You've reached the free plan limit. Upgrade to Pro for unlimited everything.</p>
+    <div class="pro-features">
+      <div><span>✓</span> Unlimited items</div>
+      <div><span>✓</span> Unlimited shared lists</div>
+      <div><span>✓</span> PDF export reports</div>
+      <div><span>✓</span> Priority pricing lookups</div>
+    </div>
+    <button class="pro-upgrade-btn" onclick="openStripe()">Upgrade to Pro — $4.99/mo</button>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Have an access code?</div>
+    <div class="pro-code-row">
+      <input type="text" class="pro-code-input" id="pro-access-code" placeholder="ACCESS CODE" maxlength="20"/>
+      <button class="pro-code-btn" onclick="redeemAccessCode()">Redeem</button>
+    </div>
+    <div id="pro-code-error" style="font-size:12px;color:var(--danger);min-height:16px;margin-bottom:8px;"></div>
+    <button class="pro-dismiss" onclick="closeProGate()">Maybe later</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo-mark">P</div>
+  <h1>Price <span>It</span></h1>
+  <div class="header-user">
+    <div class="user-dot"></div>
+    <span id="header-username">—</span>
+    <span id="header-plan-badge" class="free-badge" onclick="openProGate('upgrade')" style="display:none">FREE</span>
+    <button class="change-name-btn" id="signout-btn" onclick="doSignOut()" style="display:none">sign out</button>
+  </div>
+</header>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-top">
+      My Lists
+      <div style="display:flex;gap:4px;">
+        <button class="sidebar-action-btn" title="New list" onclick="openNewListModal(null)">+</button>
+      </div>
+    </div>
+    <div class="sidebar-lists" id="sidebar-lists"></div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-top">Shared Lists <button class="sidebar-action-btn" onclick="openListModal('join')" style="font-size:12px;font-family:'DM Sans',sans-serif;">Join</button></div>
+    <div class="shared-section" id="shared-section"></div>
+  </div>
+
+  <div class="main">
+    <div class="list-header-bar" id="list-header-bar"><span class="list-title">Select a list</span></div>
+    <div class="input-area">
+      <div class="input-group"><label>Item</label><input type="text" id="item-name" placeholder='e.g. Samsung 65" TV'/></div>
+      <div class="input-group"><label>Age</label><input type="text" id="item-age" placeholder="e.g. 4 years"/></div>
+      <button class="compute-btn" id="compute-btn" onclick="computeItem()">Price It</button>
+    </div>
+    <div class="items-area" id="items-area">
+      <div class="empty-state"><div class="empty-icon">👈</div><p>Select or create a list</p><small>Use the sidebar to get started</small></div>
+    </div>
+    <div class="list-total" id="list-total" style="display:none">
+      <div class="total-group"><span class="total-label">Current Value</span><span class="total-val-current" id="total-current">$0</span></div>
+      <div class="total-group"><span class="total-label">Replacement Cost</span><span class="total-val-replace" id="total-replace">$0</span></div>
+      <div class="total-group" id="total-item-count" style="display:none"><span class="total-label">Items</span><span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text)" id="total-items">0</span></div>
+      <div style="margin-left:auto;">
+        <button onclick="exportPDF()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          📄 Export PDF Report
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New/Edit List Modal -->
+<div class="modal-overlay" id="new-list-modal">
+  <div class="modal">
+    <h3 id="new-list-modal-title">New List</h3>
+    <p id="new-list-modal-desc">Give your list a name.</p>
+    <input type="text" id="new-list-name" placeholder="e.g. Home, Garage, Master Bedroom..."/>
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="closeNewListModal()">Cancel</button>
+      <button class="compute-btn" onclick="confirmNewList()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move Modal -->
+<div class="modal-overlay" id="move-modal">
+  <div class="modal">
+    <h3>Move List</h3>
+    <p id="move-modal-desc" style="margin-bottom:10px;"></p>
+    <div id="move-options"></div>
+    <div class="modal-btns" style="margin-top:10px;">
+      <button class="btn-ghost" onclick="closeMoveModal()">Cancel</button>
+      <button class="compute-btn" id="move-confirm-btn" onclick="confirmMove()">Move</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share/Join Modal -->
+<div class="modal-overlay" id="list-modal">
+  <div class="modal">
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="tab-share" onclick="switchTab('share')">Share List</div>
+      <div class="modal-tab" id="tab-join" onclick="switchTab('join')">Join List</div>
+    </div>
+    <div class="tab-panel active" id="panel-share">
+      <div id="share-content"><p>Loading…</p></div>
+      <div class="modal-btns"><button class="btn-ghost" onclick="closeListModal()">Done</button></div>
+    </div>
+    <div class="tab-panel" id="panel-join">
+      <p>Enter the 6-character code from a family member.</p>
+      <input type="text" id="join-code-input" placeholder="e.g. AB12CD" maxlength="6" style="text-transform:uppercase;letter-spacing:3px;font-family:'DM Mono',monospace;font-size:18px;text-align:center;width:100%;margin-bottom:8px;"/>
+      <div class="error-msg" id="join-error" style="display:none"></div>
+      <div class="modal-btns">
+        <button class="btn-ghost" onclick="closeListModal()">Cancel</button>
+        <button class="compute-btn" id="join-btn" onclick="joinList()">Join</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const FREE_ITEM_LIMIT = 8;
+const FREE_SHARED_LIMIT = 1;
+const PRO_ACCESS_CODES = ['PRICEITPRO', 'LAUNCH2025', 'CROWELL']; // your private codes
+
+// ── Firebase helpers ───────────────────────────────────────────────────────
+function onFirebaseReady(cb){if(window._firebaseReady)cb();else window.addEventListener('firebase-ready',cb,{once:true});}
+function dbRef(p){return window._dbRef(window._db,p);}
+async function dbGet(p){const s=await window._dbGet(dbRef(p));return s.exists()?s.val():null;}
+async function dbSet(p,v){await window._dbSet(dbRef(p),v);}
+async function dbDel(p){await window._dbRemove(dbRef(p));}
+function dbListen(p,cb){return window._dbOnValue(dbRef(p),s=>cb(s.exists()?s.val():null));}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let username='', activeListener=null, activeListId=null, activeIsParent=false;
+let currentUid=null, isPro=false;
+let myLists=[];
+let _proGateReason='';
+
+function saveLists(){
+  if(!currentUid)return;
+  dbSet('users/'+currentUid+'/lists', myLists.length ? myLists : []);
+}
+
+function getList(id){return myLists.find(l=>l.id===id);}
+function topLevel(){return myLists.filter(l=>!l.parentId && !l.shared);}
+function childrenOf(parentId){return myLists.filter(l=>l.parentId===parentId);}
+function sharedLists(){return myLists.filter(l=>l.shared);}
+
+// ── Pro helpers ────────────────────────────────────────────────────────────
+function totalItemCount(){
+  // Count across all lists in Firebase — for simplicity gate on UI side using local counts tracked in state
+  return parseInt(localStorage.getItem('priceit_item_count_'+currentUid)||'0');
+}
+function setItemCount(n){ localStorage.setItem('priceit_item_count_'+currentUid, n); }
+
+function canAddItem(){
+  if(isPro) return true;
+  return totalItemCount() < FREE_ITEM_LIMIT;
+}
+function canShareList(){
+  if(isPro) return true;
+  return sharedLists().filter(l=>l.owned).length < FREE_SHARED_LIMIT && myLists.filter(l=>l.shared&&l.code&&!l.parentId).length < FREE_SHARED_LIMIT;
+}
+function canExportPDF(){ return isPro; }
+
+function openProGate(reason){
+  _proGateReason = reason||'upgrade';
+  const msgs = {
+    items: `You've reached the free plan limit of ${FREE_ITEM_LIMIT} items. Upgrade to Pro for unlimited items.`,
+    share: `Free plan allows 1 shared list. Upgrade to Pro for unlimited sharing.`,
+    pdf: `PDF export is a Pro feature. Upgrade to unlock full reports.`,
+    upgrade: `Unlock the full power of Price It with a Pro account.`
+  };
+  document.getElementById('pro-gate-msg').textContent = msgs[reason]||msgs.upgrade;
+  document.getElementById('pro-access-code').value='';
+  document.getElementById('pro-code-error').textContent='';
+  document.getElementById('pro-overlay').classList.add('open');
+}
+function closeProGate(){ document.getElementById('pro-overlay').classList.remove('open'); }
+
+function openStripe(){
+  // Stripe not yet configured — show placeholder
+  alert('Payment coming soon! Use an access code or contact us at priceit@example.com for Pro access.');
+}
+
+async function redeemAccessCode(){
+  const code = document.getElementById('pro-access-code').value.trim().toUpperCase();
+  const errEl = document.getElementById('pro-code-error');
+  if(!code){ errEl.textContent='Enter a code.'; return; }
+  if(PRO_ACCESS_CODES.includes(code)){
+    await dbSet('users/'+currentUid+'/pro', true);
+    isPro = true;
+    updatePlanBadge();
+    closeProGate();
+    errEl.textContent='';
+    alert('🎉 Pro unlocked! Enjoy unlimited access.');
+  } else {
+    errEl.textContent='Invalid code. Try again.';
+  }
+}
+
+function updatePlanBadge(){
+  const badge = document.getElementById('header-plan-badge');
+  if(!badge) return;
+  if(isPro){
+    badge.textContent='PRO';
+    badge.className='pro-badge';
+    badge.onclick=null;
+    badge.style.cursor='default';
+  } else {
+    badge.textContent='FREE';
+    badge.className='free-badge';
+    badge.onclick=()=>openProGate('upgrade');
+  }
+  badge.style.display='';
+}
+
+// ── Auth UI ────────────────────────────────────────────────────────────────
+function switchAuthTab(tab){
+  ['login','signup'].forEach(t=>{
+    document.getElementById('auth-tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('auth-panel-'+t).style.display=t===tab?'block':'none';
+  });
+  document.getElementById('auth-error').textContent='';
+}
+
+function setAuthLoading(loading){
+  document.getElementById('login-btn').disabled=loading;
+  document.getElementById('signup-btn').disabled=loading;
+}
+
+function showAuthError(msg){ document.getElementById('auth-error').textContent=msg; }
+
+async function doEmailLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-password').value;
+  if(!email||!pass){ showAuthError('Please fill in all fields.'); return; }
+  setAuthLoading(true);
+  try{
+    await window._signInWithEmailAndPassword(window._auth, email, pass);
+  } catch(e){
+    showAuthError(friendlyAuthError(e.code));
+    setAuthLoading(false);
+  }
+}
+
+async function doEmailSignup(){
+  const name=document.getElementById('signup-name').value.trim();
+  const email=document.getElementById('signup-email').value.trim();
+  const pass=document.getElementById('signup-password').value;
+  if(!name||!email||!pass){ showAuthError('Please fill in all fields.'); return; }
+  setAuthLoading(true);
+  try{
+    const cred = await window._createUserWithEmailAndPassword(window._auth, email, pass);
+    await window._updateProfile(cred.user, {displayName: name});
+    window._currentUser = cred.user;
+  } catch(e){
+    showAuthError(friendlyAuthError(e.code));
+    setAuthLoading(false);
+  }
+}
+
+async function doGoogleSignIn(){
+  try{
+    await window._signInWithPopup(window._auth, window._googleProvider);
+  } catch(e){
+    showAuthError(friendlyAuthError(e.code));
+  }
+}
+
+async function doSignOut(){
+  if(!confirm('Sign out of Price It?')) return;
+  await window._signOut(window._auth);
+  currentUid=null; username=''; isPro=false; myLists=[];
+  document.getElementById('auth-overlay').classList.add('open');
+  document.getElementById('header-username').textContent='—';
+  document.getElementById('signout-btn').style.display='none';
+  document.getElementById('header-plan-badge').style.display='none';
+  renderEmpty();
+}
+
+function friendlyAuthError(code){
+  const map={
+    'auth/invalid-email':'Invalid email address.',
+    'auth/user-not-found':'No account found with that email.',
+    'auth/wrong-password':'Incorrect password.',
+    'auth/email-already-in-use':'An account with this email already exists.',
+    'auth/weak-password':'Password must be at least 6 characters.',
+    'auth/popup-closed-by-user':'Sign-in popup was closed.',
+    'auth/invalid-credential':'Invalid email or password.',
+  };
+  return map[code]||'Sign-in failed. Please try again.';
+}
+
+// ── On auth state change ───────────────────────────────────────────────────
+async function handleAuthUser(user){
+  if(!user){ return; }
+  currentUid = user.uid;
+  username = user.displayName || user.email.split('@')[0] || 'User';
+  document.getElementById('header-username').textContent = username;
+  document.getElementById('signout-btn').style.display='';
+  document.getElementById('auth-overlay').classList.remove('open');
+
+  // Check pro status
+  const proStatus = await dbGet('users/'+currentUid+'/pro');
+  isPro = proStatus === true;
+  updatePlanBadge();
+
+  await initApp();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function initApp(){
+  // Load lists from Firebase (user-scoped), migrate from localStorage if needed
+  let cloudLists = await dbGet('users/'+currentUid+'/lists');
+
+  if(!cloudLists || cloudLists.length === 0){
+    // Try migrating old localStorage data
+    const oldData = JSON.parse(localStorage.getItem('priceit_myLists2')||localStorage.getItem('priceit_myLists')||'null');
+    if(oldData && oldData.length > 0){
+      myLists = oldData.map(l=>({...l, expanded:true}));
+      await dbSet('users/'+currentUid+'/lists', myLists);
+      localStorage.removeItem('priceit_myLists2');
+      localStorage.removeItem('priceit_myLists');
+    } else {
+      const id='list_'+Date.now();
+      myLists=[{id,name:'General',shared:false,expanded:true}];
+      await dbSet('users/'+currentUid+'/lists', myLists);
+      await dbSet('lists/'+id,{name:'General',items:{},owner:username,ownerUid:currentUid});
+    }
+  } else {
+    myLists = Array.isArray(cloudLists) ? cloudLists : Object.values(cloudLists);
+  }
+
+  // Sync item count for free-tier gating
+  await syncItemCount();
+
+  activeListId = topLevel()[0]?.id || myLists[0]?.id || null;
+  activeIsParent = childrenOf(activeListId).length>0;
+  renderSidebar();
+  subscribeActive();
+}
+
+async function syncItemCount(){
+  // Count all items across all owned lists
+  let count = 0;
+  for(const list of myLists.filter(l=>!l.shared)){
+    const data = await dbGet('lists/'+list.id);
+    if(data?.items) count += Object.values(data.items).filter(i=>!i.loading).length;
+  }
+  setItemCount(count);
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function renderSidebar(){
+  const sl=document.getElementById('sidebar-lists');
+  sl.innerHTML='';
+  topLevel().forEach(list=>{
+    const children=childrenOf(list.id);
+    const hasChildren=children.length>0;
+    const group=document.createElement('div');
+    group.className='list-group';
+    group.dataset.id=list.id;
+
+    const row=document.createElement('div');
+    row.className='list-row'+(activeListId===list.id?' active':'');
+    row.draggable=true;
+    row.dataset.id=list.id;
+    row.innerHTML=`
+      <button class="expand-btn${list.expanded&&hasChildren?' open':''}" onclick="toggleExpand('${list.id}',event)" style="${hasChildren?'':'visibility:hidden'}" title="Expand">▶</button>
+      <span class="list-row-name" title="${escHtml(list.name)}">${escHtml(list.name)}</span>
+      <div class="list-row-actions">
+        <button class="row-btn" title="Add room" onclick="openNewListModal('${list.id}',event)">+📁</button>
+        <button class="row-btn" title="Move" onclick="openMoveModal('${list.id}',event)">⇄</button>
+        <button class="row-btn del" title="Delete" onclick="deleteList('${list.id}',event)">✕</button>
+      </div>`;
+    row.addEventListener('click',e=>{if(e.target.closest('.list-row-actions')||e.target.classList.contains('expand-btn'))return;selectList(list.id,false);});
+    row.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',list.id);e.dataTransfer.effectAllowed='move';});
+    row.addEventListener('dragover',e=>{e.preventDefault();row.classList.add('drag-over');});
+    row.addEventListener('dragleave',()=>row.classList.remove('drag-over'));
+    row.addEventListener('drop',e=>{e.preventDefault();row.classList.remove('drag-over');handleDrop(e.dataTransfer.getData('text/plain'),list.id);});
+    group.appendChild(row);
+
+    if(hasChildren&&list.expanded){
+      const subGroup=document.createElement('div');
+      subGroup.className='sublist-group';
+      children.forEach(child=>{
+        const sr=document.createElement('div');
+        sr.className='sublist-row'+(activeListId===child.id?' active':'');
+        sr.draggable=true;
+        sr.dataset.id=child.id;
+        sr.innerHTML=`
+          <span style="color:#333;font-size:10px;">└</span>
+          <span class="sublist-row-name" title="${escHtml(child.name)}">${escHtml(child.name)}</span>
+          <div class="sublist-row-actions">
+            <button class="row-btn" title="Move" onclick="openMoveModal('${child.id}',event)">⇄</button>
+            <button class="row-btn del" title="Delete" onclick="deleteList('${child.id}',event)">✕</button>
+          </div>`;
+        sr.addEventListener('click',e=>{if(e.target.closest('.sublist-row-actions'))return;selectList(child.id,false);});
+        sr.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',child.id);e.dataTransfer.effectAllowed='move';});
+        sr.addEventListener('dragover',e=>{e.preventDefault();sr.classList.add('drag-over');});
+        sr.addEventListener('dragleave',()=>sr.classList.remove('drag-over'));
+        sr.addEventListener('drop',e=>{e.preventDefault();sr.classList.remove('drag-over');handleDrop(e.dataTransfer.getData('text/plain'),child.id);});
+        subGroup.appendChild(sr);
+      });
+      group.appendChild(subGroup);
+    }
+    sl.appendChild(group);
+  });
+
+  const ss=document.getElementById('shared-section');
+  ss.innerHTML='';
+  sharedLists().forEach(list=>{
+    const row=document.createElement('div');
+    row.className='list-row'+(activeListId===list.id?' active':'');
+    row.innerHTML=`<span class="shared-dot"></span><span class="list-row-name">${escHtml(list.name)}</span><div class="list-row-actions"><button class="row-btn del" onclick="removeShared('${list.id}',event)">✕</button></div>`;
+    row.addEventListener('click',e=>{if(e.target.closest('.list-row-actions'))return;selectList(list.id,false);});
+    ss.appendChild(row);
+  });
+
+  // Show item count in footer for free users
+  if(!isPro){
+    const count=totalItemCount();
+    const pct=Math.min(100,(count/FREE_ITEM_LIMIT)*100);
+    const nearClass=pct>=75?(pct>=100?'full':'near'):'';
+    const existing=document.getElementById('item-limit-footer');
+    const html=`<div class="item-limit-bar" id="item-limit-footer" style="padding:8px 12px 10px;"><span>${count}/${FREE_ITEM_LIMIT} items</span><div class="item-limit-track"><div class="item-limit-fill ${nearClass}" style="width:${pct}%"></div></div></div>`;
+    if(existing) existing.outerHTML=html;
+    else {
+      const sidebar=document.querySelector('.sidebar');
+      const div=document.createElement('div');
+      div.innerHTML=html;
+      sidebar.appendChild(div.firstChild);
+    }
+  }
+}
+
+function toggleExpand(id,e){
+  e.stopPropagation();
+  const l=getList(id);
+  if(l){l.expanded=!l.expanded;saveLists();renderSidebar();}
+}
+
+function selectList(id,isParent){
+  activeListId=id;
+  activeIsParent=isParent||false;
+  renderSidebar();
+  subscribeActive();
+}
+
+// ── Drag & Drop ────────────────────────────────────────────────────────────
+async function handleDrop(draggedId, targetId){
+  if(draggedId===targetId)return;
+  const dragged=getList(draggedId);
+  const target=getList(targetId);
+  if(!dragged||!target)return;
+  if(target.parentId){dragged.parentId=target.parentId;}
+  else{if(dragged.parentId===target.id)return;dragged.parentId=target.id;target.expanded=true;}
+  saveLists();renderSidebar();
+}
+
+// ── Move Modal ─────────────────────────────────────────────────────────────
+let moveTargetId=null, moveSelectedDest=null;
+function openMoveModal(id,e){
+  e.stopPropagation();moveTargetId=id;moveSelectedDest=null;
+  const list=getList(id);
+  document.getElementById('move-modal-desc').textContent='Where do you want to move "'+list.name+'"?';
+  const opts=document.getElementById('move-options');opts.innerHTML='';
+  if(list.parentId)addMoveOption(opts,'Make top-level list',null);
+  topLevel().forEach(tl=>{if(tl.id===id||tl.parentId)return;addMoveOption(opts,'Under "'+tl.name+'"',tl.id);});
+  document.getElementById('move-modal').classList.add('open');
+}
+function addMoveOption(container,label,dest){
+  const d=document.createElement('div');d.className='move-option';d.textContent=label;
+  d.onclick=()=>{container.querySelectorAll('.move-option').forEach(o=>o.classList.remove('selected'));d.classList.add('selected');moveSelectedDest=dest;};
+  container.appendChild(d);
+}
+function closeMoveModal(){document.getElementById('move-modal').classList.remove('open');moveTargetId=null;moveSelectedDest=null;}
+function confirmMove(){
+  if(!moveTargetId)return;const list=getList(moveTargetId);if(!list)return;
+  if(moveSelectedDest===null&&list.parentId){delete list.parentId;}
+  else if(moveSelectedDest){list.parentId=moveSelectedDest;const parent=getList(moveSelectedDest);if(parent)parent.expanded=true;}
+  saveLists();closeMoveModal();renderSidebar();
+}
+
+// ── New List Modal ─────────────────────────────────────────────────────────
+let newListParentId=null;
+function openNewListModal(parentId,e){
+  if(e)e.stopPropagation();newListParentId=parentId||null;
+  document.getElementById('new-list-modal-title').textContent=parentId?'New Room':'New List';
+  document.getElementById('new-list-modal-desc').textContent=parentId?'Add a room to this list.':'Create a new top-level list.';
+  document.getElementById('new-list-name').value='';
+  document.getElementById('new-list-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('new-list-name').focus(),50);
+}
+function closeNewListModal(){document.getElementById('new-list-modal').classList.remove('open');}
+async function confirmNewList(){
+  const name=document.getElementById('new-list-name').value.trim();if(!name)return;
+  const id='list_'+Date.now();
+  const entry={id,name,shared:false,expanded:true};
+  if(newListParentId){entry.parentId=newListParentId;const parent=getList(newListParentId);if(parent)parent.expanded=true;}
+  myLists.push(entry);saveLists();
+  await dbSet('lists/'+id,{name,items:{},owner:username,ownerUid:currentUid});
+  closeNewListModal();renderSidebar();selectList(id,false);
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────
+async function deleteList(id,e){
+  e.stopPropagation();const list=getList(id);if(!list)return;
+  const children=childrenOf(id);
+  const msg=children.length>0?`Delete "${list.name}" and its ${children.length} room(s)?`:`Delete "${list.name}" and all its items?`;
+  if(!confirm(msg))return;
+  for(const child of children){myLists=myLists.filter(l=>l.id!==child.id);await dbDel('lists/'+child.id);}
+  myLists=myLists.filter(l=>l.id!==id);saveLists();await dbDel('lists/'+id);
+  if(activeListId===id||children.find(c=>c.id===activeListId))activeListId=myLists[0]?.id||null;
+  await syncItemCount();renderSidebar();subscribeActive();
+}
+async function removeShared(id,e){
+  e.stopPropagation();const list=getList(id);
+  if(!confirm(`Remove "${list?.name}" from your sidebar?`))return;
+  myLists=myLists.filter(l=>l.id!==id);saveLists();
+  if(activeListId===id)activeListId=myLists[0]?.id||null;
+  renderSidebar();subscribeActive();
+}
+
+// ── Subscription ───────────────────────────────────────────────────────────
+let combinedListeners=[];
+function subscribeActive(){
+  if(activeListener){activeListener();activeListener=null;}
+  combinedListeners.forEach(u=>u());combinedListeners=[];
+  if(!activeListId){renderEmpty();return;}
+  const children=childrenOf(activeListId);
+  if(children.length>0){
+    renderCombinedView(false);
+    let debounceTimer=null;
+    const scheduleRefresh=()=>{clearTimeout(debounceTimer);debounceTimer=setTimeout(()=>renderCombinedView(true),400);};
+    combinedListeners.push(dbListen('lists/'+activeListId,scheduleRefresh));
+    children.forEach(child=>{combinedListeners.push(dbListen('lists/'+child.id,scheduleRefresh));});
+  } else {
+    activeListener=dbListen('lists/'+activeListId,data=>renderSingleList(data));
+  }
+}
+
+// ── Combined parent view ───────────────────────────────────────────────────
+async function renderCombinedView(silent=false){
+  const snapId=activeListId;const list=getList(snapId);const children=childrenOf(snapId);
+  const hbar=document.getElementById('list-header-bar');
+  hbar.innerHTML=`<span class="list-title">${escHtml(list?.name||'')}</span><span style="font-size:11px;color:var(--muted)">${children.length} room${children.length!==1?'s':''}</span>`;
+  const area=document.getElementById('items-area');
+  if(!silent){area.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0;">Loading rooms…</div>';}
+  const allData=[];
+  for(const child of children){const data=await dbGet('lists/'+child.id);allData.push({meta:child,data});}
+  const parentData=await dbGet('lists/'+snapId);
+  if(activeListId!==snapId)return;
+  const newGrid=document.createElement('div');newGrid.className='items-grid';
+  let totalCurrent=0,totalReplace=0,totalItems=0;
+  const parentItems=parentData?.items?Object.values(parentData.items).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
+  if(parentItems.length>0){
+    const div=document.createElement('div');div.className='room-divider';div.textContent=list?.name+' (general)';newGrid.appendChild(div);
+    parentItems.forEach(item=>{
+      if(!item.loading&&item.rawCurrent&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}
+      newGrid.appendChild(buildItemCard(item,snapId,true));
+    });
+  }
+  allData.forEach(({meta,data})=>{
+    const items=data?.items?Object.values(data.items).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
+    const div=document.createElement('div');div.className='room-divider';div.textContent=meta.name+(items.length?' ('+items.length+')':'');newGrid.appendChild(div);
+    if(items.length===0){const empty=document.createElement('div');empty.style.cssText='font-size:12px;color:#444;padding:6px 0 10px;';empty.textContent='No items yet';newGrid.appendChild(empty);}
+    else{items.forEach(item=>{if(!item.loading&&item.rawCurrent&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}newGrid.appendChild(buildItemCard(item,meta.id,true));});}
+  });
+  if(newGrid.children.length===0){area.innerHTML=`<div class="empty-state"><div class="empty-icon">🏠</div><p>No items in any room yet</p><small>Select a room to add items</small></div>`;}
+  else{area.innerHTML='';area.appendChild(newGrid);}
+  updateTotals(totalCurrent,totalReplace,totalItems);
+}
+
+// ── Single list view ───────────────────────────────────────────────────────
+function renderSingleList(listData){
+  const meta=getList(activeListId);
+  const hbar=document.getElementById('list-header-bar');
+  const parentMeta=meta?.parentId?getList(meta.parentId):null;
+  hbar.innerHTML=`
+    ${parentMeta?`<span class="breadcrumb"><span onclick="selectList('${parentMeta.id}',false)">${escHtml(parentMeta.name)}</span> › </span>`:''}
+    <span class="list-title">${escHtml(listData?.name||meta?.name||'')}</span>
+    ${meta?.shared
+      ?`<div class="share-badge" onclick="openShareModal('${activeListId}')">🔗 <span class="share-code-inline">${escHtml(meta.code||'')}</span> · shared</div>`
+      :`<button class="share-btn" onclick="openShareModal('${activeListId}')">🔗 Share</button>`}
+    <div class="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span>live</span></div>
+  `;
+  const area=document.getElementById('items-area');
+  const totalBar=document.getElementById('list-total');
+  if(!listData){area.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><p>List not found</p></div>`;totalBar.style.display='none';return;}
+  const items=listData.items?Object.values(listData.items).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
+  if(items.length===0){area.innerHTML=`<div class="empty-state"><div class="empty-icon">📦</div><p>No items yet</p><small>Enter an item above to add it</small></div>`;totalBar.style.display='none';return;}
+  area.innerHTML='<div class="items-grid"></div>';
+  const grid=area.querySelector('.items-grid');
+  let totalCurrent=0,totalReplace=0,totalItems=0;
+  items.forEach(item=>{
+    if(!item.loading&&item.rawCurrent&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}
+    grid.appendChild(buildItemCard(item,activeListId,false));
+  });
+  updateTotals(totalCurrent,totalReplace,totalItems);
+}
+
+function renderEmpty(){
+  document.getElementById('items-area').innerHTML=`<div class="empty-state"><div class="empty-icon">👈</div><p>Select or create a list</p><small>Use the sidebar to get started</small></div>`;
+  document.getElementById('list-total').style.display='none';
+  document.getElementById('list-header-bar').innerHTML=`<span class="list-title">Select a list</span>`;
+}
+
+function updateTotals(cur,rep,count){
+  const bar=document.getElementById('list-total');bar.style.display='flex';
+  document.getElementById('total-current').textContent='$'+cur.toLocaleString();
+  document.getElementById('total-replace').textContent='$'+rep.toLocaleString();
+  const countEl=document.getElementById('total-item-count');const countNum=document.getElementById('total-items');
+  countEl.style.display='flex';countNum.textContent=count;
+}
+
+// ── Item value helpers ─────────────────────────────────────────────────────
+function itemQty(item){ return Math.max(1, parseInt(item.qty)||1); }
+function itemEffectiveCurrent(item){ return (item.rawCurrent||0) * itemQty(item); }
+function itemEffectiveReplace(item){
+  const base = item.useCustomPrice&&item.customPrice ? Number(item.customPrice) : (item.rawReplace||0);
+  return base * itemQty(item);
+}
+function fmtMoney(n){ return '$'+Math.round(n).toLocaleString(); }
+
+// ── Build item card ────────────────────────────────────────────────────────
+function buildItemCard(item,listId,readOnly){
+  const card=document.createElement('div');
+  const included=item.included!==false;
+  card.className='item-card'+(item.loading?' loading':'')+((!included)?' excluded':'');
+  card.id='card-'+item.id;
+  if(item.loading){
+    card.innerHTML=`<div class="item-card-main"><div><div class="item-card-top"><span class="item-name">${escHtml(item.name)}</span><span class="item-age-badge">${escHtml(item.age)}</span><span class="spinner"></span><span class="item-by">by ${escHtml(item.addedBy||'?')}</span></div></div></div>`;
+    return card;
+  }
+  const commentHtml=item.comment?`<div class="comment-display">💬 ${escHtml(item.comment)}</div>`:'';
+  card.innerHTML=`
+    <div class="item-card-main">
+      <div>
+        <div class="item-card-top">
+          <span class="item-name">${escHtml(item.name)}</span>
+          <span class="item-age-badge">${escHtml(item.age)}</span>
+          <span class="item-by">by ${escHtml(item.addedBy||'?')}</span>
+        </div>
+        ${included?`<div class="item-values">
+          <div class="val-block">
+            <span class="val-label">Current Value${itemQty(item)>1?' ×'+itemQty(item):''}</span>
+            <span class="val-number val-current">${item.rawCurrent?fmtMoney(itemEffectiveCurrent(item)):'—'}</span>
+            ${itemQty(item)>1&&item.rawCurrent?`<span style="font-size:9px;color:var(--muted);">${fmtMoney(item.rawCurrent)} each</span>`:''}
+          </div>
+          <div class="val-block">
+            <span class="val-label">Replacement Cost${itemQty(item)>1?' ×'+itemQty(item):''}</span>
+            <span class="val-number val-replace">${item.rawReplace||item.customPrice?fmtMoney(itemEffectiveReplace(item)):'—'}</span>
+            ${item.useCustomPrice?'<span style="font-size:9px;color:var(--accent);letter-spacing:0.5px;">YOUR PRICE</span>':''}
+            ${itemQty(item)>1&&(item.rawReplace||item.customPrice)?`<span style="font-size:9px;color:var(--muted);">${fmtMoney(item.useCustomPrice&&item.customPrice?Number(item.customPrice):item.rawReplace)} each</span>`:''}
+          </div>
+        </div>
+        <div class="qty-row">
+          <span class="qty-label">Qty:</span>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeQty('${listId}','${item.id}',${itemQty(item)-1})">−</button>
+            <input class="qty-num" type="number" min="1" value="${itemQty(item)}" onchange="changeQty('${listId}','${item.id}',this.value)" ${readOnly?'disabled':''}/>
+            <button class="qty-btn" onclick="changeQty('${listId}','${item.id}',${itemQty(item)+1})">+</button>
+          </div>
+          <span class="qty-note">${itemQty(item)>1?'×'+itemQty(item)+' units':''}</span>
+        </div>`:''}
+        <div class="item-summary">${escHtml(item.summary||'')}</div>
+        ${commentHtml}
+        ${!readOnly?`<div class="comment-row"><button class="comment-toggle-btn" onclick="toggleCommentBox('${item.id}')">${item.comment?'Edit note':'+ Add note'}</button><div class="comment-box" id="commentbox-${item.id}"><textarea class="textarea" id="commenttext-${item.id}" placeholder="Add a note...">${escHtml(item.comment||'')}</textarea><button class="comment-save-btn" onclick="saveComment('${listId}','${item.id}')">Save note</button></div></div>`:''}
+      </div>
+      <div class="item-actions">
+        ${!readOnly?`<button class="icon-btn" onclick="deleteItem('${listId}','${item.id}')" title="Delete">✕</button>`:''}
+      </div>
+    </div>
+    ${included&&!readOnly?`
+    <div class="custom-price-row">
+      <span class="custom-price-label ${item.useCustomPrice?'custom-price-active':''}">Custom replacement $</span>
+      <input class="custom-price-input" id="custprice-${item.id}" type="number" min="0" placeholder="0.00" value="${item.customPrice||''}" ${!item.useCustomPrice?'disabled':''} onchange="updateCustomPrice('${listId}','${item.id}',this.value)"/>
+      <button class="use-price-btn ${item.useCustomPrice?'on':''}" onclick="toggleCustomPrice('${listId}','${item.id}',${!item.useCustomPrice})">${item.useCustomPrice?'Using yours':'Use mine'}</button>
+    </div>`:''}
+    ${!readOnly?`<div class="include-row">
+      <label class="toggle-switch"><input type="checkbox" ${included?'checked':''} onchange="toggleInclude('${listId}','${item.id}',this.checked)"/><span class="toggle-slider"></span></label>
+      <span class="include-label">${included?'Included in total':'Excluded from total'}</span>
+    </div>`:''}
+  `;
+  return card;
+}
+
+async function deleteItem(listId,itemId){
+  await dbDel('lists/'+listId+'/items/'+itemId);
+  setItemCount(Math.max(0,totalItemCount()-1));
+  renderSidebar();
+}
+async function toggleCustomPrice(listId,itemId,useIt){
+  await dbSet('lists/'+listId+'/items/'+itemId+'/useCustomPrice',useIt);
+  if(useIt){setTimeout(()=>document.getElementById('custprice-'+itemId)?.focus(),100);}
+}
+async function changeQty(listId,itemId,val){
+  const qty=Math.max(1,parseInt(val)||1);
+  await dbSet('lists/'+listId+'/items/'+itemId+'/qty',qty);
+}
+async function updateCustomPrice(listId,itemId,val){
+  const num=parseFloat(val);
+  if(!isNaN(num)&&num>0){await dbSet('lists/'+listId+'/items/'+itemId+'/customPrice',num);}
+}
+async function toggleInclude(listId,itemId,included){await dbSet('lists/'+listId+'/items/'+itemId+'/included',included);}
+function toggleCommentBox(itemId){const b=document.getElementById('commentbox-'+itemId);b.classList.toggle('open');if(b.classList.contains('open'))document.getElementById('commenttext-'+itemId)?.focus();}
+async function saveComment(listId,itemId){
+  const text=document.getElementById('commenttext-'+itemId)?.value.trim()||'';
+  await dbSet('lists/'+listId+'/items/'+itemId+'/comment',text);
+  document.getElementById('commentbox-'+itemId)?.classList.remove('open');
+}
+
+// ── Compute ────────────────────────────────────────────────────────────────
+async function computeItem(){
+  if(!activeListId){alert('Please select a list first.');return;}
+  if(!canAddItem()){openProGate('items');return;}
+  const nameEl=document.getElementById('item-name');
+  const ageEl=document.getElementById('item-age');
+  const btn=document.getElementById('compute-btn');
+  const name=nameEl.value.trim(),age=ageEl.value.trim();
+  if(!name||!age){alert('Please enter both an item name and its age.');return;}
+  const children=childrenOf(activeListId);
+  if(children.length>0){alert('You\'re viewing a parent list. Please select a specific room from the sidebar to add items.');return;}
+  const itemId='item_'+Date.now();
+  const ts=Date.now();
+  await dbSet('lists/'+activeListId+'/items/'+itemId,{id:itemId,name,age,loading:true,addedBy:username,ts,included:true});
+  nameEl.value='';ageEl.value='';
+  btn.disabled=true;btn.textContent='Computing…';
+  try{
+    const result=await callClaude(name,age);
+    await dbSet('lists/'+activeListId+'/items/'+itemId,{id:itemId,name,age,addedBy:username,ts,loading:false,included:true,...result});
+    setItemCount(totalItemCount()+1);
+    renderSidebar();
+  }catch{
+    await dbSet('lists/'+activeListId+'/items/'+itemId,{id:itemId,name,age,addedBy:username,ts,loading:false,included:true,currentValue:'—',replacementCost:'—',summary:'Could not retrieve pricing. Please try again.'});
+  }
+  btn.disabled=false;btn.textContent='Price It';
+}
+
+async function callClaude(itemName,itemAge){
+  const response=await fetch('https://priceit-z5mkrvm2fq-uc.a.run.app',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({itemName,itemAge})
+  });
+  if(!response.ok)throw new Error('API error: '+response.status);
+  return await response.json();
+}
+
+// ── Share / Join ───────────────────────────────────────────────────────────
+function generateCode(){return Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');}
+
+async function shareList(listId){
+  if(!canShareList()){openProGate('share');return null;}
+  const meta=getList(listId);if(!meta)return null;
+  if(meta.code)return meta.code;
+  const code=generateCode();
+  const existing=await dbGet('codes/'+code);
+  if(existing)return shareList(listId);
+  meta.shared=true;meta.code=code;saveLists();
+  await dbSet('codes/'+code,{listId,name:meta.name,owner:username,ownerUid:currentUid});
+  return code;
+}
+
+function openShareModal(listId){
+  document.getElementById('list-modal').classList.add('open');
+  switchTab('share');renderSharePanel(listId);
+}
+
+async function renderSharePanel(listId){
+  const container=document.getElementById('share-content');
+  const meta=getList(listId);
+  if(!meta){container.innerHTML='<p style="color:var(--danger)">No active list.</p>';return;}
+  if(!canShareList()&&!meta.code){
+    container.innerHTML=`<p style="color:var(--muted);font-size:13px;">Free plan allows 1 shared list.</p><button class="compute-btn" style="width:100%;margin-top:8px;" onclick="closeListModal();openProGate('share')">Upgrade to Pro</button>`;
+    return;
+  }
+  container.innerHTML='<p style="color:var(--muted);font-size:13px">Generating code…</p>';
+  const code=await shareList(listId);
+  if(!code)return;
+  renderSidebar();
+  container.innerHTML=`<p>Share this code. Family members enter it in the <b style="color:var(--text)">Join List</b> tab.</p><div class="code-display"><span class="code-big">${escHtml(code)}</span><button class="copy-btn" id="copy-code-btn" onclick="copyCode('${escHtml(code)}')">Copy</button></div><p style="font-size:12px;color:#555">List: <b style="color:var(--text)">${escHtml(meta.name)}</b></p>`;
+}
+
+function copyCode(code){navigator.clipboard.writeText(code).then(()=>{const b=document.getElementById('copy-code-btn');if(b){b.textContent='Copied!';b.style.color='var(--accent)';}setTimeout(()=>{if(b){b.textContent='Copy';b.style.color='';}},2000);});}
+
+async function joinList(){
+  const raw=document.getElementById('join-code-input').value.trim().toUpperCase();
+  const errEl=document.getElementById('join-error');const btn=document.getElementById('join-btn');
+  errEl.style.display='none';
+  if(raw.length!==6){showJoinError('Code must be 6 characters.');return;}
+  if(myLists.find(m=>m.code===raw)){showJoinError('Already joined this list.');return;}
+  btn.disabled=true;btn.textContent='Joining…';
+  const mapping=await dbGet('codes/'+raw);
+  if(!mapping){showJoinError('Code not found.');btn.disabled=false;btn.textContent='Join';return;}
+  if(myLists.find(m=>m.id===mapping.listId)){showJoinError('Already joined this list.');btn.disabled=false;btn.textContent='Join';return;}
+  myLists.push({id:mapping.listId,name:mapping.name,shared:true,code:raw,expanded:true});
+  saveLists();activeListId=mapping.listId;
+  closeListModal();renderSidebar();subscribeActive();
+  btn.disabled=false;btn.textContent='Join';
+}
+
+function showJoinError(msg){const e=document.getElementById('join-error');e.textContent=msg;e.style.display='block';}
+function openListModal(tab){document.getElementById('list-modal').classList.add('open');switchTab(tab||'share');document.getElementById('join-error').style.display='none';}
+function closeListModal(){document.getElementById('list-modal').classList.remove('open');document.getElementById('join-code-input').value='';document.getElementById('join-error').style.display='none';}
+function switchTab(tab){
+  ['share','join'].forEach(t=>{document.getElementById('tab-'+t).classList.toggle('active',t===tab);document.getElementById('panel-'+t).classList.toggle('active',t===tab);});
+  if(tab==='join')setTimeout(()=>document.getElementById('join-code-input').focus(),50);
+}
+
+// ── PDF Export (Pro only) ──────────────────────────────────────────────────
+async function exportPDF(){
+  if(!canExportPDF()){openProGate('pdf');return;}
+  const list = getList(activeListId);
+  if(!list){alert('Please select a list first.');return;}
+  const children = childrenOf(activeListId);
+  const sections = [];
+  const parentData = await dbGet('lists/'+activeListId);
+  const parentItems = parentData?.items ? Object.values(parentData.items).filter(i=>!i.loading) : [];
+  if(parentItems.length > 0) sections.push({name: list.name + ' (General)', items: parentItems});
+  for(const child of children){
+    const data = await dbGet('lists/'+child.id);
+    const items = data?.items ? Object.values(data.items).filter(i=>!i.loading) : [];
+    sections.push({name: child.name, items});
+  }
+  if(children.length === 0 && parentItems.length === 0){alert('No items to export yet.');return;}
+  const date = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  let grandCurrent = 0, grandReplace = 0, grandCount = 0;
+  let sectionsHTML = '';
+  sections.forEach(section => {
+    const included = section.items.filter(i => i.included !== false && i.rawCurrent);
+    const excluded = section.items.filter(i => i.included === false);
+    const sectionCurrent = included.reduce((s,i)=>s+itemEffectiveCurrent(i),0);
+    const sectionReplace = included.reduce((s,i)=>s+itemEffectiveReplace(i),0);
+    grandCurrent += sectionCurrent; grandReplace += sectionReplace; grandCount += included.length;
+    let rowsHTML = '';
+    section.items.forEach(item => {
+      const inc = item.included !== false;
+      rowsHTML += `<tr style="${!inc?'opacity:0.4;':''}"><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.name}${itemQty(item)>1?' <span style=\'font-size:11px;color:#888;\'>(×'+itemQty(item)+')</span>':''}${item.comment?'<br><span style="font-size:11px;color:#888;font-style:italic;">'+item.comment+'</span>':''}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">${item.age}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#2a7a5c;font-weight:600;">${inc?fmtMoney(itemEffectiveCurrent(item)):'Excluded'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#5a7a2a;font-weight:600;">${inc?fmtMoney(itemEffectiveReplace(item)):'Excluded'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#999;">${item.addedBy||''}</td></tr>`;
+    });
+    sectionsHTML += `<div style="margin-bottom:28px;break-inside:avoid;"><div style="background:#f5f5f5;padding:8px 12px;border-left:4px solid #c8f04c;margin-bottom:0;"><span style="font-size:14px;font-weight:700;color:#111;">${section.name}</span><span style="font-size:12px;color:#666;margin-left:12px;">${included.length} item${included.length!==1?'s':''} included</span></div><table style="width:100%;border-collapse:collapse;border:1px solid #eee;"><thead><tr style="background:#fafafa;"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ITEM</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">AGE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">CURRENT VALUE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">REPLACEMENT COST</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ADDED BY</th></tr></thead><tbody>${rowsHTML}</tbody><tfoot><tr style="background:#f9ffe0;"><td colspan="2" style="padding:9px 10px;font-size:12px;font-weight:700;color:#555;">Room Total (${included.length} items)</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#2a7a5c;">$${sectionCurrent.toLocaleString()}</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#5a7a2a;">$${sectionReplace.toLocaleString()}</td><td></td></tr></tfoot></table></div>`;
+  });
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Price It — Home Inventory Report</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap');body{font-family:'DM Sans',sans-serif;color:#111;background:#fff;margin:0;padding:0;}@media print{body{margin:0;}.no-print{display:none!important;}}</style></head><body style="padding:40px 48px;max-width:900px;margin:0 auto;"><div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;border-bottom:2px solid #c8f04c;padding-bottom:20px;"><div><div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#999;text-transform:uppercase;margin-bottom:4px;">Home Inventory Report</div><h1 style="font-size:28px;font-weight:800;margin:0;color:#111;">${list.name}</h1><div style="font-size:13px;color:#888;margin-top:4px;">Generated by Price It · ${date}</div></div><div style="text-align:right;"><div style="font-size:11px;color:#999;margin-bottom:4px;">TOTAL ITEMS</div><div style="font-size:24px;font-weight:700;color:#111;">${grandCount}</div></div></div><div style="display:flex;gap:16px;margin-bottom:32px;"><div style="flex:1;background:#f0ffe0;border:1px solid #c8f04c;border-radius:8px;padding:16px 20px;"><div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Current Value</div><div style="font-size:28px;font-weight:800;color:#2a7a5c;">$${grandCurrent.toLocaleString()}</div></div><div style="flex:1;background:#f5ffe0;border:1px solid #a8d040;border-radius:8px;padding:16px 20px;"><div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Replacement Cost</div><div style="font-size:28px;font-weight:800;color:#5a7a2a;">$${grandReplace.toLocaleString()}</div></div></div>${sectionsHTML}<div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center;">Generated with Price It · Values are estimates based on current market data.</div><div class="no-print" style="position:fixed;bottom:24px;right:24px;"><button onclick="window.print()" style="background:#c8f04c;color:#111;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save as PDF</button></div></body></html>`;
+  const win = window.open('','_blank');win.document.write(html);win.document.close();
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+document.getElementById('item-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('item-age').focus();});
+document.getElementById('item-age').addEventListener('keydown',e=>{if(e.key==='Enter')computeItem();});
+document.getElementById('new-list-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmNewList();if(e.key==='Escape')closeNewListModal();});
+document.getElementById('join-code-input').addEventListener('keydown',e=>{if(e.key==='Enter')joinList();if(e.key==='Escape')closeListModal();});
+document.getElementById('login-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-password').focus();});
+document.getElementById('login-password').addEventListener('keydown',e=>{if(e.key==='Enter')doEmailLogin();});
+document.getElementById('signup-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('signup-email').focus();});
+document.getElementById('signup-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('signup-password').focus();});
+document.getElementById('signup-password').addEventListener('keydown',e=>{if(e.key==='Enter')doEmailSignup();});
+document.getElementById('pro-access-code').addEventListener('keydown',e=>{if(e.key==='Enter')redeemAccessCode();});
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+onFirebaseReady(()=>{
+  if(window._currentUser){ handleAuthUser(window._currentUser); }
+  window.addEventListener('auth-changed', e=>{ if(e.detail) handleAuthUser(e.detail); });
+});
+</script>
+</body>
+</html>
