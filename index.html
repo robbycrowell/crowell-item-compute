@@ -356,8 +356,25 @@ textarea:focus{border-color:var(--accent);}
       <div><span>✓</span> PDF export reports</div>
       <div><span>✓</span> Priority pricing lookups</div>
     </div>
-    <button class="pro-upgrade-btn" onclick="openStripe()">Upgrade to Pro — $4.99/mo</button>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Have an access code?</div>
+
+    <!-- Pricing toggle -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="plan-monthly-btn" onclick="selectPlan('monthly')" style="flex:1;background:rgba(200,240,76,0.15);border:2px solid var(--accent);color:var(--accent);border-radius:8px;padding:10px 8px;cursor:pointer;font-family:'DM Sans',sans-serif;">
+        <div style="font-size:13px;font-weight:700;">Monthly</div>
+        <div style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif;">$7.99</div>
+        <div style="font-size:10px;color:var(--muted);">per month</div>
+      </button>
+      <button id="plan-yearly-btn" onclick="selectPlan('yearly')" style="flex:1;background:var(--surface);border:2px solid var(--border);color:var(--text);border-radius:8px;padding:10px 8px;cursor:pointer;font-family:'DM Sans',sans-serif;position:relative;">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--accent);color:#0f0f0f;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;">BEST VALUE</div>
+        <div style="font-size:13px;font-weight:700;">Yearly</div>
+        <div style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif;">$54.99</div>
+        <div style="font-size:10px;color:var(--muted);">$4.58/mo · save 43%</div>
+      </button>
+    </div>
+
+    <button class="pro-upgrade-btn" id="pro-upgrade-btn" onclick="openStripe()">Get Pro — $7.99/mo</button>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Cancel anytime. Secure payment via Stripe.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Have an access code?</div>
     <div class="pro-code-row">
       <input type="text" class="pro-code-input" id="pro-access-code" placeholder="ACCESS CODE" maxlength="20"/>
       <button class="pro-code-btn" onclick="redeemAccessCode()">Redeem</button>
@@ -531,9 +548,25 @@ function openProGate(reason){
 }
 function closeProGate(){ document.getElementById('pro-overlay').classList.remove('open'); }
 
+let selectedPlan = 'monthly';
+function selectPlan(plan){
+  selectedPlan = plan;
+  const mBtn = document.getElementById('plan-monthly-btn');
+  const yBtn = document.getElementById('plan-yearly-btn');
+  const upgradeBtn = document.getElementById('pro-upgrade-btn');
+  if(plan === 'monthly'){
+    mBtn.style.background='rgba(200,240,76,0.15)';mBtn.style.borderColor='var(--accent)';mBtn.style.color='var(--accent)';
+    yBtn.style.background='var(--surface)';yBtn.style.borderColor='var(--border)';yBtn.style.color='var(--text)';
+    upgradeBtn.textContent='Get Pro — $7.99/mo';
+  } else {
+    yBtn.style.background='rgba(200,240,76,0.15)';yBtn.style.borderColor='var(--accent)';yBtn.style.color='var(--accent)';
+    mBtn.style.background='var(--surface)';mBtn.style.borderColor='var(--border)';mBtn.style.color='var(--text)';
+    upgradeBtn.textContent='Get Pro — $54.99/yr';
+  }
+}
+
 function openStripe(){
-  // Stripe not yet configured — show placeholder
-  alert('Payment coming soon! Use an access code or contact us at priceit@example.com for Pro access.');
+  alert('Payment coming soon! Use an access code or contact us for Pro access.');
 }
 
 async function redeemAccessCode(){
