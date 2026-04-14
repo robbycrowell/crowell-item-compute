@@ -425,9 +425,12 @@ textarea:focus{border-color:var(--accent);}
       <div class="total-group"><span class="total-label">Current Value</span><span class="total-val-current" id="total-current">$0</span></div>
       <div class="total-group"><span class="total-label">Replacement Cost</span><span class="total-val-replace" id="total-replace">$0</span></div>
       <div class="total-group" id="total-item-count" style="display:none"><span class="total-label">Items</span><span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text)" id="total-items">0</span></div>
-      <div style="margin-left:auto;">
-        <button onclick="exportPDF()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-          📄 Export PDF Report
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button onclick="exportPDF('inventory')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          📋 Inventory Report
+        </button>
+        <button onclick="exportPDF('pricing')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          💰 Pricing Report
         </button>
       </div>
     </div>
@@ -1213,7 +1216,7 @@ function switchTab(tab){
 }
 
 // ── PDF Export (Pro only) ──────────────────────────────────────────────────
-async function exportPDF(){
+async function exportPDF(mode){
   if(!canExportPDF()){openProGate('pdf');return;}
   const list = getList(activeListId);
   if(!list){alert('Please select a list first.');return;}
@@ -1228,23 +1231,46 @@ async function exportPDF(){
     sections.push({name: child.name, items});
   }
   if(children.length === 0 && parentItems.length === 0){alert('No items to export yet.');return;}
+
+  const isPricing = mode === 'pricing';
+  const reportTitle = isPricing ? 'Pricing Report' : 'Inventory Report';
   const date = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   let grandCurrent = 0, grandReplace = 0, grandCount = 0;
   let sectionsHTML = '';
+
   sections.forEach(section => {
-    const included = section.items.filter(i => i.included !== false && i.rawCurrent);
-    const excluded = section.items.filter(i => i.included === false);
+    const included = isPricing
+      ? section.items.filter(i => i.included !== false && i.rawCurrent)
+      : section.items.filter(i => i.included !== false);
     const sectionCurrent = included.reduce((s,i)=>s+itemEffectiveCurrent(i),0);
     const sectionReplace = included.reduce((s,i)=>s+itemEffectiveReplace(i),0);
     grandCurrent += sectionCurrent; grandReplace += sectionReplace; grandCount += included.length;
+
     let rowsHTML = '';
-    section.items.forEach(item => {
-      const inc = item.included !== false;
-      rowsHTML += `<tr style="${!inc?'opacity:0.4;':''}"><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.name}${itemQty(item)>1?' <span style=\'font-size:11px;color:#888;\'>(×'+itemQty(item)+')</span>':''}${item.comment?'<br><span style="font-size:11px;color:#888;font-style:italic;">'+item.comment+'</span>':''}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">${item.age}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#2a7a5c;font-weight:600;">${inc?fmtMoney(itemEffectiveCurrent(item)):'Excluded'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#5a7a2a;font-weight:600;">${inc?fmtMoney(itemEffectiveReplace(item)):'Excluded'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#999;">${item.addedBy||''}</td></tr>`;
+    section.items.filter(i=>i.included!==false).forEach(item => {
+      if(isPricing){
+        rowsHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.name}${itemQty(item)>1?' <span style=\'font-size:11px;color:#888;\'>(×'+itemQty(item)+')</span>':''}${item.comment?'<br><span style="font-size:11px;color:#888;font-style:italic;">'+item.comment+'</span>':''}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">${item.age}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#2a7a5c;font-weight:600;">${item.rawCurrent?fmtMoney(itemEffectiveCurrent(item)):'—'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#5a7a2a;font-weight:600;">${item.rawReplace||item.customPrice?fmtMoney(itemEffectiveReplace(item)):'—'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#999;">${item.addedBy||''}</td></tr>`;
+      } else {
+        rowsHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.name}${itemQty(item)>1?' <span style=\'font-size:11px;color:#888;\'>(×'+itemQty(item)+')</span>':''}${item.comment?'<br><span style="font-size:11px;color:#888;font-style:italic;">'+item.comment+'</span>':''}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">${item.age}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">□ Checked</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#999;">${item.addedBy||''}</td></tr>`;
+      }
     });
-    sectionsHTML += `<div style="margin-bottom:28px;break-inside:avoid;"><div style="background:#f5f5f5;padding:8px 12px;border-left:4px solid #c8f04c;margin-bottom:0;"><span style="font-size:14px;font-weight:700;color:#111;">${section.name}</span><span style="font-size:12px;color:#666;margin-left:12px;">${included.length} item${included.length!==1?'s':''} included</span></div><table style="width:100%;border-collapse:collapse;border:1px solid #eee;"><thead><tr style="background:#fafafa;"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ITEM</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">AGE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">CURRENT VALUE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">REPLACEMENT COST</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ADDED BY</th></tr></thead><tbody>${rowsHTML}</tbody><tfoot><tr style="background:#f9ffe0;"><td colspan="2" style="padding:9px 10px;font-size:12px;font-weight:700;color:#555;">Room Total (${included.length} items)</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#2a7a5c;">$${sectionCurrent.toLocaleString()}</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#5a7a2a;">$${sectionReplace.toLocaleString()}</td><td></td></tr></tfoot></table></div>`;
+
+    const theadHTML = isPricing
+      ? `<tr style="background:#fafafa;"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ITEM</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">AGE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">CURRENT VALUE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">REPLACEMENT COST</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ADDED BY</th></tr>`
+      : `<tr style="background:#fafafa;"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ITEM</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">AGE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">CONDITION</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ADDED BY</th></tr>`;
+
+    const tfootHTML = isPricing
+      ? `<tfoot><tr style="background:#f9ffe0;"><td colspan="2" style="padding:9px 10px;font-size:12px;font-weight:700;color:#555;">Room Total (${included.length} items)</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#2a7a5c;">$${sectionCurrent.toLocaleString()}</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#5a7a2a;">$${sectionReplace.toLocaleString()}</td><td></td></tr></tfoot>`
+      : `<tfoot><tr style="background:#f9f9f9;"><td colspan="4" style="padding:9px 10px;font-size:12px;font-weight:700;color:#555;">${included.length} item${included.length!==1?'s':''}</td></tr></tfoot>`;
+
+    sectionsHTML += `<div style="margin-bottom:28px;break-inside:avoid;"><div style="background:#f5f5f5;padding:8px 12px;border-left:4px solid #c8f04c;margin-bottom:0;"><span style="font-size:14px;font-weight:700;color:#111;">${section.name}</span><span style="font-size:12px;color:#666;margin-left:12px;">${included.length} item${included.length!==1?'s':''}</span></div><table style="width:100%;border-collapse:collapse;border:1px solid #eee;"><thead>${theadHTML}</thead><tbody>${rowsHTML}</tbody>${tfootHTML}</table></div>`;
   });
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Price It \u2014 Home Inventory Report</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap');body{font-family:'DM Sans',sans-serif;color:#111;background:#fff;margin:0;padding:0;}@media print{body{margin:0;}.no-print{display:none!important;}}<\/style><\/head><body style="padding:40px 48px;max-width:900px;margin:0 auto;"><div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;border-bottom:2px solid #c8f04c;padding-bottom:20px;"><div><div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#999;text-transform:uppercase;margin-bottom:4px;">Home Inventory Report</div><h1 style="font-size:28px;font-weight:800;margin:0;color:#111;">${list.name}</h1><div style="font-size:13px;color:#888;margin-top:4px;">Generated by Price It · ${date}</div></div><div style="text-align:right;"><div style="font-size:11px;color:#999;margin-bottom:4px;">TOTAL ITEMS</div><div style="font-size:24px;font-weight:700;color:#111;">${grandCount}</div></div></div><div style="display:flex;gap:16px;margin-bottom:32px;"><div style="flex:1;background:#f0ffe0;border:1px solid #c8f04c;border-radius:8px;padding:16px 20px;"><div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Current Value</div><div style="font-size:28px;font-weight:800;color:#2a7a5c;">$${grandCurrent.toLocaleString()}</div></div><div style="flex:1;background:#f5ffe0;border:1px solid #a8d040;border-radius:8px;padding:16px 20px;"><div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Replacement Cost</div><div style="font-size:28px;font-weight:800;color:#5a7a2a;">$${grandReplace.toLocaleString()}</div></div></div>${sectionsHTML}<div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center;">Generated with Price It · Values are estimates based on current market data.</div><div class="no-print" style="position:fixed;bottom:24px;right:24px;"><button onclick="window.print()" style="background:#c8f04c;color:#111;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save as PDF</button></div><\/body><\/html>`;
+
+  const summaryHTML = isPricing
+    ? `<div style="display:flex;gap:16px;margin-bottom:32px;"><div style="flex:1;background:#f0ffe0;border:1px solid #c8f04c;border-radius:8px;padding:16px 20px;"><div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Current Value</div><div style="font-size:28px;font-weight:800;color:#2a7a5c;">$${grandCurrent.toLocaleString()}</div></div><div style="flex:1;background:#f5ffe0;border:1px solid #a8d040;border-radius:8px;padding:16px 20px;"><div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Replacement Cost</div><div style="font-size:28px;font-weight:800;color:#5a7a2a;">$${grandReplace.toLocaleString()}</div></div></div>`
+    : `<div style="background:#f5f5f5;border-radius:8px;padding:14px 20px;margin-bottom:32px;display:inline-block;"><div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total Items</div><div style="font-size:28px;font-weight:800;color:#111;">${grandCount}</div></div>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Price It \u2014 ${reportTitle}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap');body{font-family:'DM Sans',sans-serif;color:#111;background:#fff;margin:0;padding:0;}@media print{body{margin:0;}.no-print{display:none!important;}}<\/style><\/head><body style="padding:40px 48px;max-width:900px;margin:0 auto;"><div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;border-bottom:2px solid #c8f04c;padding-bottom:20px;"><div><div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#999;text-transform:uppercase;margin-bottom:4px;">${reportTitle}</div><h1 style="font-size:28px;font-weight:800;margin:0;color:#111;">${list.name}</h1><div style="font-size:13px;color:#888;margin-top:4px;">Generated by Price It · ${date}</div></div><div style="text-align:right;"><div style="font-size:11px;color:#999;margin-bottom:4px;">TOTAL ITEMS</div><div style="font-size:24px;font-weight:700;color:#111;">${grandCount}</div></div></div>${summaryHTML}${sectionsHTML}<div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center;">Generated with Price It · ${isPricing?'Values are estimates based on current market data.':'For informational purposes only.'}</div><div class="no-print" style="position:fixed;bottom:24px;right:24px;"><button onclick="window.print()" style="background:#c8f04c;color:#111;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save as PDF</button></div><\/body><\/html>`;
   const win = window.open('','_blank');win.document.write(html);win.document.close();
 }
 
