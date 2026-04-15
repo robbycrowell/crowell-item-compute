@@ -1082,7 +1082,7 @@ function renderSidebar(){
         ${list.shared&&list.code?`<button class="row-btn" title="View members" onclick="openMembersModal('${list.id}',event)" style="font-size:10px;">👥</button>`:''}
         <button class="row-btn" title="Add room" onclick="openNewListModal('${list.id}',event)">+📁</button>
         <button class="row-btn" title="Move" onclick="openMoveModal('${list.id}',event)">⇄</button>
-        <button class="row-btn del" title="Delete" onclick="deleteList('${list.id}',event)">✕</button>
+        <button class="row-btn del" title="${list.joinedByMe?'Remove from sidebar':'Delete'}" onclick="${list.joinedByMe?`removeShared('${list.id}',event)`:`deleteList('${list.id}',event)`}">✕</button>
       </div>`;
     row.addEventListener('click',e=>{if(e.target.closest('.list-row-actions')||e.target.classList.contains('expand-btn'))return;selectList(list.id,false);});
     row.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',list.id);e.dataTransfer.effectAllowed='move';});
