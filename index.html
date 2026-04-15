@@ -976,7 +976,32 @@ async function renderCombinedView(silent=false){
   }
   allData.forEach(({meta,data})=>{
     const items=data?.items?Object.values(data.items).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
-    const div=document.createElement('div');div.className='room-divider';div.textContent=meta.name+(items.length?' ('+items.length+')':'');newGrid.appendChild(div);
+    const div=document.createElement('div');
+    div.className='room-divider';
+    div.style.cssText='display:flex;align-items:center;justify-content:space-between;';
+    const nameSpan=document.createElement('span');
+    nameSpan.textContent=meta.name+(items.length?' ('+items.length+')':'');
+    div.appendChild(nameSpan);
+    // Show delete button if owner or has edit permission
+    if(canAddSublistsToList(snapId)){
+      const delBtn=document.createElement('button');
+      delBtn.textContent='✕';
+      delBtn.title='Delete room';
+      delBtn.style.cssText='background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:3px;opacity:0.5;';
+      delBtn.onmouseover=()=>delBtn.style.opacity='1';
+      delBtn.onmouseout=()=>delBtn.style.opacity='0.5';
+      delBtn.onclick=async()=>{
+        if(!confirm(`Delete room "${meta.name}"${items.length>0?' and its '+items.length+' item(s)':''}?`))return;
+        // Remove from myLists if present, otherwise just delete from Firebase
+        const idx=myLists.findIndex(l=>l.id===meta.id);
+        if(idx>-1)myLists.splice(idx,1);
+        await saveLists();
+        await dbDel('lists/'+meta.id);
+        renderCombinedView(false);
+      };
+      div.appendChild(delBtn);
+    }
+    newGrid.appendChild(div);
     if(items.length===0){const empty=document.createElement('div');empty.style.cssText='font-size:12px;color:#444;padding:6px 0 10px;';empty.textContent='No items yet';newGrid.appendChild(empty);}
     else{items.forEach(item=>{if(!item.loading&&item.rawCurrent&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}newGrid.appendChild(buildItemCard(item,meta.id,true));});}
   });
