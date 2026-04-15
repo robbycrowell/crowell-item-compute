@@ -726,6 +726,9 @@ async function initApp(){
     myLists = cloudLists.filter(l=>l && l.id); // filter out any nulls
   }
 
+  // Sync shared list permissions from Firebase
+  await syncSharedPermissions();
+
   // Sync item count for free-tier gating
   await syncItemCount();
 
@@ -987,9 +990,10 @@ function renderSingleList(listData){
   hbar.innerHTML=`
     ${parentMeta?`<span class="breadcrumb"><span onclick="selectList('${parentMeta.id}',false)">${escHtml(parentMeta.name)}</span> › </span>`:''}
     <span class="list-title">${escHtml(listData?.name||meta?.name||'')}</span>
-    ${meta?.shared
-      ?`<div class="share-badge" onclick="openShareModal('${activeListId}')">🔗 <span class="share-code-inline">${escHtml(meta.code||'')}</span> · shared</div>`
-      :`<button class="share-btn" onclick="openShareModal('${activeListId}')">🔗 Share</button>`}
+    ${meta?.shared && meta?.ownerUid !== currentUid
+      ? (canAddSublistsToList(activeListId)?`<button class="share-btn" onclick="openNewListModal('${activeListId}',event)" style="font-size:11px;">+ Add Room</button>`:'')
+      : `<button class="share-btn" onclick="openShareModal('${activeListId}')">🔗 Share</button>`}
+    ${meta?.shared?`<div class="share-badge" onclick="${meta?.ownerUid===currentUid?`openShareModal('${activeListId}')`:'void(0)'}">🔗 <span class="share-code-inline">${escHtml(meta.code||'')}</span> · shared</div>`:''}
     <div class="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span>live</span></div>
   `;
   const area=document.getElementById('items-area');
@@ -1032,6 +1036,8 @@ function fmtMoney(n){ return '$'+Math.round(n).toLocaleString(); }
 
 // ── Build item card ────────────────────────────────────────────────────────
 function buildItemCard(item,listId,readOnly){
+  // Override readOnly based on list permission
+  if(readOnly === false) readOnly = !canEditItemsInList(listId);
   const card=document.createElement('div');
   const included=item.included!==false;
   card.className='item-card'+(item.loading?' loading':'')+((!included)?' excluded':'');
@@ -1083,7 +1089,7 @@ function buildItemCard(item,listId,readOnly){
     <div class="custom-price-row">
       <span class="custom-price-label ${item.useCustomPrice?'custom-price-active':''}">Custom replacement $</span>
       <input class="custom-price-input" id="custprice-${item.id}" type="number" min="0" placeholder="0.00" value="${item.customPrice||''}" ${!item.useCustomPrice?'disabled':''} onchange="updateCustomPrice('${listId}','${item.id}',this.value)"/>
-      <button class="use-price-btn ${item.useCustomPrice?'on':''}" onclick="toggleCustomPrice('${listId}','${item.id}',${!item.useCustomPrice})">${item.useCustomPrice?'Using yours':'Use mine'}</button>
+      <button class="use-price-btn ${item.useCustomPrice?'on':''}" onclick="toggleCustomPrice('${listId}','${item.id}',${!item.useCustomPrice})">${item.useCustomPrice?'Using my price':'Use my price'}</button>
     </div>`:''}
     ${!readOnly?`<div class="include-row">
       <label class="toggle-switch"><input type="checkbox" ${included?'checked':''} onchange="toggleInclude('${listId}','${item.id}',this.checked)"/><span class="toggle-slider"></span></label>
@@ -1122,6 +1128,7 @@ async function saveComment(listId,itemId){
 async function computeItem(){
   if(!activeListId){alert('Please select a list first.');return;}
   if(!canAddItem()){openProGate('items');return;}
+  if(!canAddItemsToList(activeListId)){alert('You have view-only access to this list.');return;}
   const nameEl=document.getElementById('item-name');
   const ageEl=document.getElementById('item-age');
   const btn=document.getElementById('compute-btn');
@@ -1154,7 +1161,27 @@ async function callClaude(itemName,itemAge){
   return await response.json();
 }
 
+async function syncSharedPermissions(){
+  for(const list of myLists.filter(l=>l.shared && l.code && l.ownerUid && l.ownerUid!==currentUid)){
+    const mapping = await dbGet('codes/'+list.code);
+    if(mapping?.sharePermission && mapping.sharePermission !== list.sharePermission){
+      list.sharePermission = mapping.sharePermission;
+    }
+  }
+  await saveLists();
+}
+
 // ── Share / Join ───────────────────────────────────────────────────────────
+function getListPermission(listId){
+  const meta=getList(listId);
+  if(!meta) return 'view';
+  // If user owns this list (not shared/joined), full access
+  if(!meta.shared || meta.ownerUid===currentUid || !meta.ownerUid) return 'owner';
+  return meta.sharePermission||'edit';
+}
+function canAddItemsToList(listId){ const p=getListPermission(listId); return p==='owner'||p==='edit'||p==='add'; }
+function canAddSublistsToList(listId){ const p=getListPermission(listId); return p==='owner'||p==='edit'; }
+function canEditItemsInList(listId){ const p=getListPermission(listId); return p==='owner'||p==='edit'||p==='add'; }
 function generateCode(){return Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');}
 
 async function shareList(listId){
@@ -1164,8 +1191,10 @@ async function shareList(listId){
   const code=generateCode();
   const existing=await dbGet('codes/'+code);
   if(existing)return shareList(listId);
-  meta.shared=true;meta.code=code;saveLists();
-  await dbSet('codes/'+code,{listId,name:meta.name,owner:username,ownerUid:currentUid});
+  meta.shared=true;meta.code=code;
+  if(!meta.sharePermission) meta.sharePermission='edit';
+  saveLists();
+  await dbSet('codes/'+code,{listId,name:meta.name,owner:username,ownerUid:currentUid,sharePermission:'edit'});
   return code;
 }
 
@@ -1186,7 +1215,37 @@ async function renderSharePanel(listId){
   const code=await shareList(listId);
   if(!code)return;
   renderSidebar();
-  container.innerHTML=`<p>Share this code. Family members enter it in the <b style="color:var(--text)">Join List</b> tab.</p><div class="code-display"><span class="code-big">${escHtml(code)}</span><button class="copy-btn" id="copy-code-btn" onclick="copyCode('${escHtml(code)}')">Copy</button></div><p style="font-size:12px;color:#555">List: <b style="color:var(--text)">${escHtml(meta.name)}</b></p>`;
+  const perm = meta.sharePermission||'edit';
+  container.innerHTML=`
+    <p>Share this code. Family members enter it in the <b style="color:var(--text)">Join List</b> tab.</p>
+    <div class="code-display"><span class="code-big">${escHtml(code)}</span><button class="copy-btn" id="copy-code-btn" onclick="copyCode('${escHtml(code)}')">Copy</button></div>
+    <p style="font-size:12px;color:#555;margin-bottom:10px;">List: <b style="color:var(--text)">${escHtml(meta.name)}</b></p>
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Shared member permissions</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px;">
+      <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;border:1px solid ${perm==='view'?'var(--accent)':'var(--border)'};cursor:pointer;background:${perm==='view'?'rgba(200,240,76,0.08)':'transparent'}">
+        <input type="radio" name="share-perm" value="view" ${perm==='view'?'checked':''} onchange="updateSharePermission('${listId}','view')" style="margin-top:2px;accent-color:var(--accent)"/>
+        <div><div style="font-size:13px;font-weight:500;color:var(--text)">View only</div><div style="font-size:11px;color:var(--muted)">Members can see items but not make changes</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;border:1px solid ${perm==='add'?'var(--accent)':'var(--border)'};cursor:pointer;background:${perm==='add'?'rgba(200,240,76,0.08)':'transparent'}">
+        <input type="radio" name="share-perm" value="add" ${perm==='add'?'checked':''} onchange="updateSharePermission('${listId}','add')" style="margin-top:2px;accent-color:var(--accent)"/>
+        <div><div style="font-size:13px;font-weight:500;color:var(--text)">Add items</div><div style="font-size:11px;color:var(--muted)">Members can add items to your list</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;border:1px solid ${perm==='edit'?'var(--accent)':'var(--border)'};cursor:pointer;background:${perm==='edit'?'rgba(200,240,76,0.08)':'transparent'}">
+        <input type="radio" name="share-perm" value="edit" ${perm==='edit'?'checked':''} onchange="updateSharePermission('${listId}','edit')" style="margin-top:2px;accent-color:var(--accent)"/>
+        <div><div style="font-size:13px;font-weight:500;color:var(--text)">Full access <span style="font-size:10px;color:var(--accent);font-weight:600;">DEFAULT</span></div><div style="font-size:11px;color:var(--muted)">Members can add items and create sublists</div></div>
+      </label>
+    </div>`;
+}
+
+async function updateSharePermission(listId, perm){
+  const meta=getList(listId);
+  if(!meta)return;
+  meta.sharePermission=perm;
+  await saveLists();
+  // Also store on the code so joining users can read it
+  if(meta.code) await dbSet('codes/'+meta.code+'/sharePermission', perm);
+  // Re-render to update radio highlight styles
+  renderSharePanel(listId);
 }
 
 function copyCode(code){navigator.clipboard.writeText(code).then(()=>{const b=document.getElementById('copy-code-btn');if(b){b.textContent='Copied!';b.style.color='var(--accent)';}setTimeout(()=>{if(b){b.textContent='Copy';b.style.color='';}},2000);});}
@@ -1201,7 +1260,7 @@ async function joinList(){
   const mapping=await dbGet('codes/'+raw);
   if(!mapping){showJoinError('Code not found.');btn.disabled=false;btn.textContent='Join';return;}
   if(myLists.find(m=>m.id===mapping.listId)){showJoinError('Already joined this list.');btn.disabled=false;btn.textContent='Join';return;}
-  myLists.push({id:mapping.listId,name:mapping.name,shared:true,code:raw,expanded:true});
+  myLists.push({id:mapping.listId,name:mapping.name,shared:true,code:raw,expanded:true,sharePermission:mapping.sharePermission||'edit',ownerUid:mapping.ownerUid||null});
   saveLists();activeListId=mapping.listId;
   closeListModal();renderSidebar();subscribeActive();
   btn.disabled=false;btn.textContent='Join';
