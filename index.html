@@ -784,9 +784,9 @@ async function saveLists(){
 }
 
 function getList(id){return myLists.find(l=>l.id===id);}
-function topLevel(){return myLists.filter(l=>!l.parentId && !l.shared);}
+function topLevel(){return myLists.filter(l=>!l.parentId && (!l.shared || l.ownerUid===currentUid || !l.ownerUid));}
 function childrenOf(parentId){return myLists.filter(l=>l.parentId===parentId);}
-function sharedLists(){return myLists.filter(l=>l.shared);}
+function sharedLists(){return myLists.filter(l=>l.shared && l.ownerUid && l.ownerUid!==currentUid);}
 
 // ── Pro helpers ────────────────────────────────────────────────────────────
 function totalItemCount(){
