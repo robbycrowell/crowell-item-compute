@@ -795,9 +795,16 @@ async function saveLists(){
 }
 
 function getList(id){return myLists.find(l=>l.id===id);}
-function topLevel(){return myLists.filter(l=>!l.parentId && !(l.shared && l.ownerUid && l.ownerUid!==currentUid));}
+function topLevel(){return myLists.filter(l=>!l.parentId && !isJoinedList(l));}
 function childrenOf(parentId){return myLists.filter(l=>l.parentId===parentId);}
-function sharedLists(){return myLists.filter(l=>l.shared && l.ownerUid && l.ownerUid!==currentUid);}
+function sharedLists(){return myLists.filter(l=>!l.parentId && isJoinedList(l));}
+function isJoinedList(l){
+  // A joined list is one that is shared AND either has someone else's ownerUid, OR has no ownerUid but was explicitly joined (joinedByMe flag)
+  if(!l.shared) return false;
+  if(l.ownerUid && l.ownerUid !== currentUid) return true;
+  if(l.joinedByMe) return true;
+  return false;
+}
 
 // ── Pro helpers ────────────────────────────────────────────────────────────
 function totalItemCount(){
@@ -1012,6 +1019,24 @@ async function initApp(){
   } else {
     myLists = cloudLists.filter(l=>l && l.id); // filter out any nulls
   }
+
+  // Migration: fix old joined lists that are missing ownerUid/joinedByMe
+  let needsSave = false;
+  for(const list of myLists.filter(l=>l.shared && l.code && !l.ownerUid && !l.joinedByMe)){
+    const mapping = await dbGet('codes/'+list.code);
+    if(mapping){
+      if(mapping.ownerUid && mapping.ownerUid !== currentUid){
+        list.ownerUid = mapping.ownerUid;
+        list.joinedByMe = true;
+        needsSave = true;
+      } else if(mapping.ownerUid === currentUid){
+        // This is our own list — just set ownerUid
+        list.ownerUid = currentUid;
+        needsSave = true;
+      }
+    }
+  }
+  if(needsSave) await saveLists();
 
   // Sync shared list permissions from Firebase
   await syncSharedPermissions();
@@ -1719,7 +1744,7 @@ async function joinList(){
   const mapping=await dbGet('codes/'+raw);
   if(!mapping){showJoinError('Code not found.');btn.disabled=false;btn.textContent='Join';return;}
   if(myLists.find(m=>m.id===mapping.listId)){showJoinError('Already joined this list.');btn.disabled=false;btn.textContent='Join';return;}
-  myLists.push({id:mapping.listId,name:mapping.name,shared:true,code:raw,expanded:true,sharePermission:mapping.sharePermission||'edit',ownerUid:mapping.ownerUid||null});
+  myLists.push({id:mapping.listId,name:mapping.name,shared:true,code:raw,expanded:true,sharePermission:mapping.sharePermission||'edit',ownerUid:mapping.ownerUid||null,joinedByMe:true});
   // Also add any children (sublists) of the shared parent
   if(mapping.children){
     const childArr = Array.isArray(mapping.children) ? mapping.children : Object.values(mapping.children);
