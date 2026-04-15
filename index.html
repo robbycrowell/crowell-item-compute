@@ -987,13 +987,18 @@ function renderSingleList(listData){
   const meta=getList(activeListId);
   const hbar=document.getElementById('list-header-bar');
   const parentMeta=meta?.parentId?getList(meta.parentId):null;
+  const isOwned = !meta?.shared || meta?.ownerUid === currentUid || !meta?.ownerUid;
+  const isJoined = meta?.shared && meta?.ownerUid && meta?.ownerUid !== currentUid;
+
   hbar.innerHTML=`
     ${parentMeta?`<span class="breadcrumb"><span onclick="selectList('${parentMeta.id}',false)">${escHtml(parentMeta.name)}</span> › </span>`:''}
     <span class="list-title">${escHtml(listData?.name||meta?.name||'')}</span>
-    ${meta?.shared && meta?.ownerUid !== currentUid
-      ? (canAddSublistsToList(activeListId)?`<button class="share-btn" onclick="openNewListModal('${activeListId}',event)" style="font-size:11px;">+ Add Room</button>`:'')
-      : `<button class="share-btn" onclick="openShareModal('${activeListId}')">🔗 Share</button>`}
-    ${meta?.shared?`<div class="share-badge" onclick="${meta?.ownerUid===currentUid?`openShareModal('${activeListId}')`:'void(0)'}">🔗 <span class="share-code-inline">${escHtml(meta.code||'')}</span> · shared</div>`:''}
+    ${isOwned
+      ? `<button class="share-btn" onclick="openShareModal('${activeListId}')">🔗 Share</button>`
+      : canAddSublistsToList(activeListId)
+        ? `<button class="share-btn" onclick="openNewListModal('${activeListId}',event)" style="font-size:11px;">+ Add Room</button>`
+        : ''}
+    ${meta?.shared ? `<div class="share-badge" style="${isJoined?'cursor:default;opacity:0.7;':'cursor:pointer;'}" ${isOwned?`onclick="openShareModal('${activeListId}')"`:''}>🔗 <span class="share-code-inline">${escHtml(meta.code||'')}</span> · shared</div>` : ''}
     <div class="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span>live</span></div>
   `;
   const area=document.getElementById('items-area');
