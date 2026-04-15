@@ -508,6 +508,28 @@ let username='', activeListener=null, activeListId=null, activeIsParent=false;
 let currentUid=null, isPro=false;
 let myLists=[];
 let _proGateReason='';
+let sharedSublistCache={}; // {listId: [{id, name}]}
+
+async function loadSharedSublists(parentId){
+  // Load child lists stored under this parent from Firebase users data or by scanning myLists
+  // We store sublists created under shared lists in Firebase under lists/{childId} with parentId field
+  // Scan for lists that have parentId matching this shared list
+  const data = await dbGet('lists/'+parentId);
+  if(!data) return;
+  // Get sublists from myLists first (ones the current user added)
+  const localChildren = myLists.filter(l=>l.parentId===parentId);
+  // Also check Firebase for sublists added by others — stored in a sublists index
+  const remoteIndex = await dbGet('listChildren/'+parentId) || {};
+  const remoteChildren = Object.values(remoteIndex).filter(c=>!localChildren.find(l=>l.id===c.id));
+  sharedSublistCache[parentId] = [...localChildren, ...remoteChildren];
+  renderSidebar();
+}
+
+function toggleSharedExpand(id, e){
+  e.stopPropagation();
+  const l=getList(id);
+  if(l){ l.expanded = l.expanded === false ? true : false; saveLists(); renderSidebar(); }
+}
 
 async function saveLists(){
   if(!currentUid) return;
@@ -809,13 +831,46 @@ function renderSidebar(){
   });
 
   const ss=document.getElementById('shared-section');
+  // ── Shared lists section ──
   ss.innerHTML='';
   sharedLists().forEach(list=>{
+    const cachedChildren = sharedSublistCache[list.id] || [];
+    const hasChildren = cachedChildren.length > 0;
+    const isExpanded = list.expanded !== false;
+
+    const group=document.createElement('div');
+    group.className='list-group';
+
     const row=document.createElement('div');
     row.className='list-row'+(activeListId===list.id?' active':'');
-    row.innerHTML=`<span class="shared-dot"></span><span class="list-row-name">${escHtml(list.name)}</span><div class="list-row-actions"><button class="row-btn del" onclick="removeShared('${list.id}',event)">✕</button></div>`;
-    row.addEventListener('click',e=>{if(e.target.closest('.list-row-actions'))return;selectList(list.id,false);});
-    ss.appendChild(row);
+    row.innerHTML=`
+      <button class="expand-btn${isExpanded&&hasChildren?' open':''}" onclick="toggleSharedExpand('${list.id}',event)" style="${hasChildren?'':'visibility:hidden'}" title="Expand">▶</button>
+      <span class="shared-dot"></span>
+      <span class="list-row-name">${escHtml(list.name)}</span>
+      <div class="list-row-actions"><button class="row-btn del" onclick="removeShared('${list.id}',event)">✕</button></div>`;
+    row.addEventListener('click',e=>{if(e.target.closest('.list-row-actions')||e.target.classList.contains('expand-btn'))return;selectList(list.id,false);});
+    group.appendChild(row);
+
+    if(hasChildren && isExpanded){
+      const subGroup=document.createElement('div');
+      subGroup.className='sublist-group';
+      cachedChildren.forEach(child=>{
+        const sr=document.createElement('div');
+        sr.className='sublist-row'+(activeListId===child.id?' active':'');
+        sr.innerHTML=`
+          <span style="color:#333;font-size:10px;">└</span>
+          <span class="sublist-row-name" title="${escHtml(child.name)}">${escHtml(child.name)}</span>`;
+        sr.addEventListener('click',()=>selectList(child.id,false));
+        subGroup.appendChild(sr);
+      });
+      group.appendChild(subGroup);
+    }
+    ss.appendChild(group);
+
+    // Load sublists from Firebase if not cached
+    if(!sharedSublistCache[list.id]){
+      loadSharedSublists(list.id);
+    }
   });
 
   // Show item count in footer for free users
@@ -910,9 +965,18 @@ async function confirmNewList(){
   const name=document.getElementById('new-list-name').value.trim();if(!name)return;
   const id='list_'+Date.now();
   const entry={id,name,shared:false,expanded:true};
-  if(newListParentId){entry.parentId=newListParentId;const parent=getList(newListParentId);if(parent)parent.expanded=true;}
-  myLists.push(entry);saveLists();
-  await dbSet('lists/'+id,{name,items:{},owner:username,ownerUid:currentUid});
+  if(newListParentId){
+    entry.parentId=newListParentId;
+    const parent=getList(newListParentId);
+    if(parent)parent.expanded=true;
+    // Register in Firebase index so shared members can see it
+    await dbSet('listChildren/'+newListParentId+'/'+id, {id, name});
+  }
+  myLists.push(entry);
+  await saveLists();
+  await dbSet('lists/'+id,{name,items:{},owner:username,ownerUid:currentUid,parentId:newListParentId||null});
+  // Invalidate cache so sidebar reloads
+  if(newListParentId) delete sharedSublistCache[newListParentId];
   closeNewListModal();renderSidebar();selectList(id,false);
 }
 
