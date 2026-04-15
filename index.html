@@ -239,7 +239,32 @@ textarea:focus{border-color:var(--accent);}
 .name-prompt-box p{font-size:13px;color:var(--muted);margin-bottom:20px;}
 .name-prompt-box input[type="text"]{width:100%;margin-bottom:12px;text-align:center;font-size:15px;}
 
-/* ── MOBILE ── */
+/* ── HOW-TO TOUR ── */
+.tour-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:280;}
+.tour-overlay.open{display:flex;}
+.tour-box{background:#1c1c1c;border:1px solid var(--border);border-radius:16px;padding:28px;width:420px;max-width:94vw;max-height:90vh;overflow-y:auto;}
+.tour-header{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.tour-header .logo-mark{width:32px;height:32px;font-size:14px;flex-shrink:0;}
+.tour-header h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
+.tour-header h2 span{color:var(--accent);}
+.tour-step{display:none;}
+.tour-step.active{display:block;}
+.tour-step-num{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-family:'DM Mono',monospace;}
+.tour-step h3{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:8px;}
+.tour-step p{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:12px;}
+.tour-step .tour-visual{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:12px;color:var(--text);line-height:1.7;}
+.tour-step .tour-visual b{color:var(--accent);}
+.tour-dots{display:flex;gap:6px;justify-content:center;margin:16px 0 12px;}
+.tour-dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:background 0.2s;}
+.tour-dot.active{background:var(--accent);}
+.tour-nav{display:flex;gap:8px;justify-content:space-between;align-items:center;}
+.tour-btn-ghost{background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:8px 16px;font-size:13px;cursor:pointer;transition:all 0.15s;}
+.tour-btn-ghost:hover{border-color:var(--muted);color:var(--text);}
+.tour-btn-next{background:var(--accent);color:#0f0f0f;border:none;border-radius:7px;padding:8px 20px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:opacity 0.15s;}
+.tour-btn-next:hover{opacity:0.9;}
+.help-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:5px;}
+.help-btn:hover{border-color:var(--accent);color:var(--accent);}
+
 .menu-btn{display:none;background:none;border:none;color:var(--text);cursor:pointer;font-size:20px;padding:0 4px;line-height:1;}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:49;}
 @media(max-width:640px){
@@ -390,12 +415,89 @@ textarea:focus{border-color:var(--accent);}
   <div class="logo-mark">P</div>
   <h1>Price <span>It</span></h1>
   <div class="header-user">
+    <button class="help-btn" id="help-btn" onclick="openTour(false)" style="display:none">❓ How it works</button>
     <div class="user-dot"></div>
     <span id="header-username">—</span>
     <span id="header-plan-badge" class="free-badge" onclick="openProGate('upgrade')" style="display:none">FREE</span>
     <button class="change-name-btn" id="signout-btn" onclick="doSignOut()" style="display:none">sign out</button>
   </div>
 </header>
+
+<!-- How-To Tour Modal -->
+<div class="tour-overlay" id="tour-overlay">
+  <div class="tour-box">
+    <div class="tour-header">
+      <div class="logo-mark">P</div>
+      <h2>Welcome to Price <span>It</span></h2>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="tour-step active" id="tour-step-0">
+      <div class="tour-step-num">Step 1 of 5</div>
+      <h3>What is Price It?</h3>
+      <p>Price It is a home inventory tool that uses AI to find the current value and replacement cost of your belongings — perfect for insurance claims, moving, or just knowing what you own.</p>
+      <div class="tour-visual">
+        <b>Current Value</b> — what your item is worth on the used market today<br>
+        <b>Replacement Cost</b> — what it would cost to buy it new today
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="tour-step" id="tour-step-1">
+      <div class="tour-step-num">Step 2 of 5</div>
+      <h3>Adding Items</h3>
+      <p>Type an item name and its age, then hit <b style="color:var(--accent)">Price It</b>. The AI will search current market data and return a value within seconds.</p>
+      <div class="tour-visual">
+        <b>Item:</b> Samsung 65" TV &nbsp;|&nbsp; <b>Age:</b> 3 years<br>
+        → <b>Current Value: $400</b> &nbsp;·&nbsp; <b>Replacement: $799</b><br><br>
+        💡 Be specific — "TaylorMade M3 Driver" works better than "golf club"
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="tour-step" id="tour-step-2">
+      <div class="tour-step-num">Step 3 of 5</div>
+      <h3>Organizing with Lists & Rooms</h3>
+      <p>Create lists for each area of your home. Add rooms inside a list to keep things organized — like a <b style="color:var(--accent)">Home</b> list with <b style="color:var(--accent)">Kitchen</b>, <b style="color:var(--accent)">Garage</b>, and <b style="color:var(--accent)">Bedroom</b> rooms inside it.</p>
+      <div class="tour-visual">
+        <b>+</b> in the sidebar → New List<br>
+        <b>+📁</b> next to a list → Add a Room inside it<br><br>
+        Clicking a top-level list shows a combined view of all rooms and their totals.
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="tour-step" id="tour-step-3">
+      <div class="tour-step-num">Step 4 of 5</div>
+      <h3>Sharing with Family</h3>
+      <p>Share any list with family members so everyone can contribute. They join using a 6-character code — no account setup needed on your end.</p>
+      <div class="tour-visual">
+        <b>🔗 Share</b> button → get your code → share it<br>
+        Family enters it under <b>Shared Lists → Join</b><br><br>
+        You control permissions: <b>View only</b>, <b>Add items</b>, or <b>Full access</b>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="tour-step" id="tour-step-4">
+      <div class="tour-step-num">Step 5 of 5</div>
+      <h3>Exporting Reports</h3>
+      <p>When you're done, export a professional PDF report to share with your insurance company or keep for your records.</p>
+      <div class="tour-visual">
+        <b>📋 Inventory Report</b> — clean list of all items, no prices<br>
+        <b>💰 Pricing Report</b> — full report with current values and replacement costs<br><br>
+        Both are available at the bottom of any list. <span style="color:var(--accent);">Pro feature.</span>
+      </div>
+    </div>
+
+    <div class="tour-dots" id="tour-dots"></div>
+    <div class="tour-nav">
+      <button class="tour-btn-ghost" id="tour-back-btn" onclick="tourStep(-1)" style="visibility:hidden">← Back</button>
+      <button class="tour-btn-ghost" onclick="closeTour()">Skip</button>
+      <button class="tour-btn-next" id="tour-next-btn" onclick="tourStep(1)">Next →</button>
+    </div>
+  </div>
+</div>
 
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 <div class="app">
@@ -714,6 +816,7 @@ async function handleAuthUser(user){
   username = user.displayName || user.email.split('@')[0] || 'User';
   document.getElementById('header-username').textContent = username;
   document.getElementById('signout-btn').style.display='';
+  document.getElementById('help-btn').style.display='';
   document.getElementById('auth-overlay').classList.remove('open');
 
   // Check pro status
@@ -722,6 +825,12 @@ async function handleAuthUser(user){
   updatePlanBadge();
 
   await initApp();
+
+  // Show tour for new users (no tour seen flag stored)
+  const tourSeen = localStorage.getItem('priceit_tour_seen_'+currentUid);
+  if(!tourSeen){
+    setTimeout(()=>openTour(true), 600);
+  }
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -1268,7 +1377,50 @@ async function syncSharedPermissions(){
   await saveLists();
 }
 
-// ── Share / Join ───────────────────────────────────────────────────────────
+// ── How-To Tour ────────────────────────────────────────────────────────────
+const TOUR_STEPS = 5;
+let tourCurrentStep = 0;
+
+function openTour(isNew){
+  tourCurrentStep = 0;
+  renderTourStep();
+  document.getElementById('tour-overlay').classList.add('open');
+}
+function closeTour(){
+  document.getElementById('tour-overlay').classList.remove('open');
+  if(currentUid) localStorage.setItem('priceit_tour_seen_'+currentUid, '1');
+}
+function tourStep(dir){
+  tourCurrentStep = Math.max(0, Math.min(TOUR_STEPS-1, tourCurrentStep+dir));
+  renderTourStep();
+}
+function renderTourStep(){
+  for(let i=0;i<TOUR_STEPS;i++){
+    const el=document.getElementById('tour-step-'+i);
+    if(el) el.classList.toggle('active', i===tourCurrentStep);
+  }
+  // Dots
+  const dots=document.getElementById('tour-dots');
+  dots.innerHTML='';
+  for(let i=0;i<TOUR_STEPS;i++){
+    const d=document.createElement('div');
+    d.className='tour-dot'+(i===tourCurrentStep?' active':'');
+    d.onclick=()=>{tourCurrentStep=i;renderTourStep();};
+    dots.appendChild(d);
+  }
+  // Back button
+  const back=document.getElementById('tour-back-btn');
+  back.style.visibility = tourCurrentStep===0?'hidden':'visible';
+  // Next button
+  const next=document.getElementById('tour-next-btn');
+  if(tourCurrentStep===TOUR_STEPS-1){
+    next.textContent="Let's go! 🎉";
+    next.onclick=closeTour;
+  } else {
+    next.textContent='Next →';
+    next.onclick=()=>tourStep(1);
+  }
+}
 function getListPermission(listId){
   const meta=getList(listId);
   if(!meta) return 'view';
