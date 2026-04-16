@@ -989,6 +989,9 @@ function openProGate(reason){
 }
 function closeProGate(){ document.getElementById('pro-overlay').classList.remove('open'); }
 
+const STRIPE_MONTHLY_URL = 'https://buy.stripe.com/test_14AdRb1N3bgh6PG2SGdIA00';
+const STRIPE_YEARLY_URL = 'https://buy.stripe.com/test_5kQaEZ77ndop0ri1OCdIA01';
+
 let selectedPlan = 'monthly';
 function selectPlan(plan){
   selectedPlan = plan;
@@ -1007,7 +1010,11 @@ function selectPlan(plan){
 }
 
 function openStripe(){
-  alert('Payment coming soon! Use an access code or contact us for Pro access.');
+  const url = selectedPlan === 'yearly' ? STRIPE_YEARLY_URL : STRIPE_MONTHLY_URL;
+  // Pass user email to pre-fill Stripe checkout
+  const user = window._currentUser;
+  const email = user?.email ? '?prefilled_email='+encodeURIComponent(user.email) : '';
+  window.open(url + email, '_blank');
 }
 
 async function redeemAccessCode(){
@@ -1144,6 +1151,15 @@ async function handleAuthUser(user){
   const tourSeen = localStorage.getItem('priceit_tour_seen_'+currentUid);
   if(!tourSeen){
     setTimeout(()=>openTour(true), 600);
+  }
+
+  // Handle Stripe payment success redirect
+  if(window._pendingPaymentSuccess){
+    window._pendingPaymentSuccess = false;
+    await dbSet('users/'+currentUid+'/pro', true);
+    isPro = true;
+    updatePlanBadge();
+    setTimeout(()=>alert('🎉 Welcome to Pro! Your account has been upgraded.'), 500);
   }
 }
 
@@ -2155,6 +2171,15 @@ function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt
 // ── Boot ───────────────────────────────────────────────────────────────────
 // Show auth overlay immediately so there's no black screen while Firebase loads
 document.getElementById('auth-overlay').classList.add('open');
+
+// Check for payment success redirect from Stripe
+const _urlParams = new URLSearchParams(window.location.search);
+if(_urlParams.get('payment') === 'success'){
+  // Clean the URL
+  window.history.replaceState({}, '', window.location.pathname);
+  // Will unlock Pro after auth loads in handleAuthUser
+  window._pendingPaymentSuccess = true;
+}
 
 onFirebaseReady(()=>{
   if(window._currentUser){ handleAuthUser(window._currentUser); }
