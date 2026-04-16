@@ -239,6 +239,51 @@ textarea:focus{border-color:var(--accent);}
 .name-prompt-box p{font-size:13px;color:var(--muted);margin-bottom:20px;}
 .name-prompt-box input[type="text"]{width:100%;margin-bottom:12px;text-align:center;font-size:15px;}
 
+/* ── OPTIONS MENU ── */
+.options-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 9px;cursor:pointer;display:flex;flex-direction:column;gap:3.5px;transition:all 0.15s;flex-shrink:0;}
+.options-btn:hover{border-color:var(--accent);color:var(--accent);}
+.options-btn span{display:block;width:14px;height:1.5px;background:currentColor;border-radius:1px;}
+.options-menu{position:fixed;top:54px;right:12px;width:240px;background:#1c1c1c;border:1px solid var(--border);border-radius:12px;z-index:200;overflow:hidden;display:none;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+.options-menu.open{display:block;}
+.options-menu-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);}
+.options-menu-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text);}
+.options-menu-email{font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.options-menu-plan{margin-top:6px;}
+.options-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;color:var(--muted);cursor:pointer;transition:all 0.15s;border:none;background:none;width:100%;text-align:left;}
+.options-item:hover{background:var(--surface);color:var(--text);}
+.options-item-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.options-divider{height:1px;background:var(--border);margin:4px 0;}
+.options-item.danger:hover{background:rgba(240,76,76,0.08);color:var(--danger);}
+/* ── ACCOUNT MODAL ── */
+.account-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:210;}
+.account-modal-overlay.open{display:flex;}
+.account-modal{background:#1c1c1c;border:1px solid var(--border);border-radius:14px;padding:24px;width:360px;max-width:94vw;}
+.account-avatar{width:52px;height:52px;background:rgba(200,240,76,0.15);border:2px solid rgba(200,240,76,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent);margin-bottom:12px;}
+.account-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.account-row:last-child{border-bottom:none;}
+.account-row-label{color:var(--muted);}
+.account-row-value{color:var(--text);font-weight:500;}
+/* ── RECENTLY DELETED ── */
+.deleted-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;}
+.deleted-item-info{flex:1;}
+.deleted-item-name{font-size:13px;color:var(--text);font-weight:500;}
+.deleted-item-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+.restore-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+.restore-btn:hover{border-color:var(--accent);color:var(--accent);}
+/* ── FEEDBACK / WHATS NEW ── */
+.feedback-overlay,.whatsnew-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:210;}
+.feedback-overlay.open,.whatsnew-overlay.open{display:flex;}
+.feedback-modal,.whatsnew-modal{background:#1c1c1c;border:1px solid var(--border);border-radius:14px;padding:24px;width:380px;max-width:94vw;}
+.whatsnew-modal{max-height:80vh;overflow-y:auto;}
+.whatsnew-item{padding:12px 0;border-bottom:1px solid var(--border);}
+.whatsnew-item:last-child{border-bottom:none;}
+.whatsnew-version{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:3px;}
+.whatsnew-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.whatsnew-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+
+.feedback-type-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all 0.15s;}
+.feedback-type-btn:hover,.feedback-type-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(200,240,76,0.08);}
+
 /* ── HOW-TO TOUR ── */
 .tour-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:280;}
 .tour-overlay.open{display:flex;}
@@ -442,15 +487,121 @@ textarea:focus{border-color:var(--accent);}
   <div class="logo-mark">P</div>
   <h1>Price <span>It</span></h1>
   <div class="header-user">
-    <button class="help-btn" id="help-btn" onclick="openTour(false)" style="display:none">❓ How it works</button>
-    <div class="user-dot"></div>
-    <span id="header-username">—</span>
+    <div class="user-dot" id="user-dot" style="display:none"></div>
+    <span id="header-username" style="display:none">—</span>
     <span id="header-plan-badge" class="free-badge" onclick="openProGate('upgrade')" style="display:none">FREE</span>
-    <button class="change-name-btn" id="signout-btn" onclick="doSignOut()" style="display:none">sign out</button>
+    <button class="options-btn" id="options-btn" onclick="toggleOptionsMenu()" style="display:none" aria-label="Options">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </header>
 
-<!-- How-To Tour Modal -->
+<!-- Options Dropdown Menu -->
+<div class="options-menu" id="options-menu">
+  <div class="options-menu-header">
+    <div class="options-menu-name" id="om-name">—</div>
+    <div class="options-menu-email" id="om-email">—</div>
+    <div class="options-menu-plan" id="om-plan"></div>
+  </div>
+  <button class="options-item" onclick="closeOptionsMenu();openAccountModal()">
+    <span class="options-item-icon">👤</span> Account
+  </button>
+  <button class="options-item" onclick="closeOptionsMenu();openProGate('upgrade')" id="om-upgrade-btn">
+    <span class="options-item-icon">⚡</span> Upgrade to Pro
+  </button>
+  <div class="options-divider"></div>
+  <button class="options-item" onclick="closeOptionsMenu();openTour(false)">
+    <span class="options-item-icon">❓</span> How it works
+  </button>
+  <button class="options-item" onclick="closeOptionsMenu();openWhatsNew()">
+    <span class="options-item-icon">✨</span> What's new
+  </button>
+  <button class="options-item" onclick="closeOptionsMenu();openFeedback()">
+    <span class="options-item-icon">💬</span> Send feedback
+  </button>
+  <div class="options-divider"></div>
+  <button class="options-item" onclick="closeOptionsMenu();openDeletedModal()">
+    <span class="options-item-icon">🗑</span> Recently deleted
+  </button>
+  <div class="options-divider"></div>
+  <button class="options-item danger" onclick="closeOptionsMenu();doSignOut()" style="color:var(--danger);">
+    <span class="options-item-icon">→</span> Sign out
+  </button>
+</div>
+
+<!-- Account Modal -->
+<div class="account-modal-overlay" id="account-modal-overlay">
+  <div class="account-modal">
+    <div class="account-avatar" id="account-avatar">?</div>
+    <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px;" id="account-modal-name">—</div>
+    <div id="account-rows"></div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button class="btn-ghost" style="flex:1" onclick="closeAccountModal()">Close</button>
+      <button class="compute-btn" style="flex:1" onclick="closeAccountModal();openProGate('upgrade')" id="account-upgrade-btn">Upgrade to Pro</button>
+    </div>
+  </div>
+</div>
+
+<!-- Recently Deleted Modal -->
+<div class="modal-overlay" id="deleted-modal">
+  <div class="modal" style="width:400px;">
+    <h3>🗑 Recently Deleted</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Items and lists deleted in the last 30 days. Restore them before they're permanently removed.</p>
+    <div id="deleted-list" style="max-height:300px;overflow-y:auto;"></div>
+    <div class="modal-btns" style="margin-top:12px;">
+      <button class="btn-ghost" onclick="closeDeletedModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="feedback-overlay" id="feedback-overlay">
+  <div class="feedback-modal">
+    <h3 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:6px;">Send Feedback</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Let us know what you think, report a bug, or request a feature.</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="feedback-type-btn active" onclick="setFeedbackType(this,'general')">💬 General</button>
+      <button class="feedback-type-btn" onclick="setFeedbackType(this,'bug')">🐛 Bug report</button>
+      <button class="feedback-type-btn" onclick="setFeedbackType(this,'feature')">💡 Feature request</button>
+    </div>
+    <textarea id="feedback-text" placeholder="Tell us what's on your mind…" style="width:100%;min-height:100px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;resize:vertical;"></textarea>
+    <div id="feedback-status" style="font-size:12px;color:var(--accent);min-height:18px;margin-top:6px;"></div>
+    <div class="modal-btns" style="margin-top:10px;">
+      <button class="btn-ghost" onclick="closeFeedback()">Cancel</button>
+      <button class="compute-btn" onclick="submitFeedback()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- What's New Modal -->
+<div class="whatsnew-overlay" id="whatsnew-overlay">
+  <div class="whatsnew-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;">✨ What's New</h3>
+      <button class="btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="closeWhatsNew()">Done</button>
+    </div>
+    <div class="whatsnew-item">
+      <div class="whatsnew-version">v1.1 — Apr 2025</div>
+      <div class="whatsnew-title">Firebase Authentication</div>
+      <div class="whatsnew-desc">Sign in with email or Google. Your lists now sync across all your devices automatically.</div>
+    </div>
+    <div class="whatsnew-item">
+      <div class="whatsnew-version">v1.1</div>
+      <div class="whatsnew-title">Shared List Permissions</div>
+      <div class="whatsnew-desc">Control what family members can do — view only, add items, or full access with rooms.</div>
+    </div>
+    <div class="whatsnew-item">
+      <div class="whatsnew-version">v1.1</div>
+      <div class="whatsnew-title">PDF Export Reports</div>
+      <div class="whatsnew-desc">Export a clean Inventory Report or a full Pricing Report with current values and replacement costs.</div>
+    </div>
+    <div class="whatsnew-item">
+      <div class="whatsnew-version">v1.0 — Mar 2025</div>
+      <div class="whatsnew-title">Price It launched</div>
+      <div class="whatsnew-desc">AI-powered home inventory valuation. Enter any item, get current value and replacement cost instantly.</div>
+    </div>
+  </div>
+</div>
 <div class="tour-overlay" id="tour-overlay">
   <div class="tour-box">
     <div class="tour-header">
@@ -951,7 +1102,9 @@ async function doSignOut(){
   currentUid=null; username=''; isPro=false; myLists=[];
   document.getElementById('auth-overlay').classList.add('open');
   document.getElementById('header-username').textContent='—';
-  document.getElementById('signout-btn').style.display='none';
+  document.getElementById('header-username').style.display='none';
+  document.getElementById('user-dot').style.display='none';
+  document.getElementById('options-btn').style.display='none';
   document.getElementById('header-plan-badge').style.display='none';
   renderEmpty();
 }
@@ -975,8 +1128,9 @@ async function handleAuthUser(user){
   currentUid = user.uid;
   username = user.displayName || user.email.split('@')[0] || 'User';
   document.getElementById('header-username').textContent = username;
-  document.getElementById('signout-btn').style.display='';
-  document.getElementById('help-btn').style.display='';
+  document.getElementById('header-username').style.display='';
+  document.getElementById('user-dot').style.display='';
+  document.getElementById('options-btn').style.display='';
   document.getElementById('auth-overlay').classList.remove('open');
 
   // Check pro status
@@ -1319,18 +1473,26 @@ async function confirmNewList(){
 // ── Delete ─────────────────────────────────────────────────────────────────
 async function deleteList(id,e){
   e.stopPropagation();const list=getList(id);if(!list)return;
+  if(isJoinedList(list)){removeShared(id,e);return;}
   const children=childrenOf(id);
   const msg=children.length>0?`Delete "${list.name}" and its ${children.length} room(s)?`:`Delete "${list.name}" and all its items?`;
   if(!confirm(msg))return;
-  for(const child of children){myLists=myLists.filter(l=>l.id!==child.id);await dbDel('lists/'+child.id);}
+  const listData = await dbGet('lists/'+id);
+  trackDeleted(list.name,'list',id,listData);
+  for(const child of children){
+    const childData=await dbGet('lists/'+child.id);
+    trackDeleted(child.name,'list',child.id,childData);
+    myLists=myLists.filter(l=>l.id!==child.id);await dbDel('lists/'+child.id);
+  }
   myLists=myLists.filter(l=>l.id!==id);saveLists();await dbDel('lists/'+id);
   if(activeListId===id||children.find(c=>c.id===activeListId))activeListId=myLists[0]?.id||null;
   await syncItemCount();renderSidebar();subscribeActive();
 }
 async function removeShared(id,e){
   e.stopPropagation();const list=getList(id);
-  if(!confirm(`Remove "${list?.name}" from your sidebar?`))return;
-  myLists=myLists.filter(l=>l.id!==id);saveLists();
+  if(!confirm(`Leave "${list?.name}"?\n\nThis only removes it from your sidebar. All items and data stay intact for other members.`))return;
+  myLists=myLists.filter(l=>l.id!==id && l.parentId!==id);
+  await saveLists();
   if(activeListId===id)activeListId=myLists[0]?.id||null;
   renderSidebar();subscribeActive();
 }
@@ -1539,6 +1701,8 @@ function buildItemCard(item,listId,readOnly){
 }
 
 async function deleteItem(listId,itemId){
+  const itemData = await dbGet('lists/'+listId+'/items/'+itemId);
+  if(itemData) trackDeleted(itemData.name||'Unknown item','item',itemId,{...itemData,listId});
   await dbDel('lists/'+listId+'/items/'+itemId);
   setItemCount(Math.max(0,totalItemCount()-1));
   renderSidebar();
@@ -1830,7 +1994,151 @@ async function exportPDF(mode){
   const win = window.open('','_blank');win.document.write(html);win.document.close();
 }
 
-// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+// ── Options Menu ───────────────────────────────────────────────────────────
+function toggleOptionsMenu(){
+  const menu=document.getElementById('options-menu');
+  const isOpen=menu.classList.contains('open');
+  if(!isOpen) populateOptionsMenu();
+  menu.classList.toggle('open');
+}
+function closeOptionsMenu(){ document.getElementById('options-menu').classList.remove('open'); }
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('options-menu');
+  const btn=document.getElementById('options-btn');
+  if(menu&&!menu.contains(e.target)&&btn&&!btn.contains(e.target)) closeOptionsMenu();
+});
+function populateOptionsMenu(){
+  document.getElementById('om-name').textContent = username||'—';
+  const user = window._currentUser;
+  document.getElementById('om-email').textContent = user?.email||'';
+  const planEl = document.getElementById('om-plan');
+  planEl.innerHTML = isPro
+    ? `<span class="pro-badge">PRO</span>`
+    : `<span class="free-badge" style="cursor:default;">FREE</span>`;
+  document.getElementById('om-upgrade-btn').style.display = isPro ? 'none' : '';
+}
+
+// ── Account Modal ──────────────────────────────────────────────────────────
+function openAccountModal(){
+  const user = window._currentUser;
+  const initial = (username||'?').charAt(0).toUpperCase();
+  document.getElementById('account-avatar').textContent = initial;
+  document.getElementById('account-modal-name').textContent = username||'—';
+  document.getElementById('account-upgrade-btn').style.display = isPro ? 'none' : '';
+  const joinedDate = user?.metadata?.creationTime
+    ? new Date(user.metadata.creationTime).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
+    : '—';
+  const rows = [
+    {label:'Email', value: user?.email||'—'},
+    {label:'Plan', value: isPro ? '✦ Pro' : 'Free'},
+    {label:'Member since', value: joinedDate},
+    {label:'Items tracked', value: totalItemCount()},
+    {label:'Lists', value: myLists.filter(l=>!isJoinedList(l)&&!l.parentId).length},
+  ];
+  document.getElementById('account-rows').innerHTML = rows.map(r=>`
+    <div class="account-row">
+      <span class="account-row-label">${r.label}</span>
+      <span class="account-row-value">${r.value}</span>
+    </div>`).join('');
+  document.getElementById('account-modal-overlay').classList.add('open');
+}
+function closeAccountModal(){ document.getElementById('account-modal-overlay').classList.remove('open'); }
+
+// ── Recently Deleted ───────────────────────────────────────────────────────
+function openDeletedModal(){
+  document.getElementById('deleted-modal').classList.add('open');
+  renderDeletedList();
+}
+function closeDeletedModal(){ document.getElementById('deleted-modal').classList.remove('open'); }
+
+function renderDeletedList(){
+  const container = document.getElementById('deleted-list');
+  const raw = localStorage.getItem('priceit_deleted_'+currentUid);
+  const deleted = raw ? JSON.parse(raw) : [];
+  const now = Date.now();
+  const valid = deleted.filter(d => now - d.deletedAt < 30*24*60*60*1000);
+  // Save back trimmed list
+  localStorage.setItem('priceit_deleted_'+currentUid, JSON.stringify(valid));
+  if(valid.length === 0){
+    container.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0;text-align:center;">Nothing deleted recently.</div>';
+    return;
+  }
+  container.innerHTML = valid.map((d,i)=>{
+    const daysLeft = Math.max(0, 30 - Math.floor((now-d.deletedAt)/(24*60*60*1000)));
+    return `<div class="deleted-item">
+      <div class="deleted-item-info">
+        <div class="deleted-item-name">${escHtml(d.name)}</div>
+        <div class="deleted-item-meta">${d.type==='list'?'List':'Item'} · deleted ${Math.floor((now-d.deletedAt)/(24*60*60*1000))}d ago · ${daysLeft}d left</div>
+      </div>
+      <button class="restore-btn" onclick="restoreDeleted(${i})">Restore</button>
+    </div>`;
+  }).join('');
+}
+
+function trackDeleted(name, type, id, data){
+  if(!currentUid) return;
+  const raw = localStorage.getItem('priceit_deleted_'+currentUid);
+  const deleted = raw ? JSON.parse(raw) : [];
+  deleted.unshift({name, type, id, data, deletedAt: Date.now()});
+  // Keep max 50 entries
+  localStorage.setItem('priceit_deleted_'+currentUid, JSON.stringify(deleted.slice(0,50)));
+}
+
+async function restoreDeleted(index){
+  const raw = localStorage.getItem('priceit_deleted_'+currentUid);
+  const deleted = raw ? JSON.parse(raw) : [];
+  const entry = deleted[index];
+  if(!entry) return;
+  if(entry.type === 'list'){
+    // Restore list to Firebase and myLists
+    await dbSet('lists/'+entry.id, entry.data);
+    if(!myLists.find(l=>l.id===entry.id)){
+      myLists.push({id:entry.id, name:entry.name, shared:false, expanded:true});
+      await saveLists();
+    }
+  } else if(entry.type === 'item'){
+    const listId = entry.data?.listId || entry.listId;
+    if(listId){
+      const {listId:_,...itemData} = entry.data;
+      await dbSet('lists/'+listId+'/items/'+entry.id, itemData);
+      setItemCount(totalItemCount()+1);
+    }
+  }
+  deleted.splice(index,1);
+  localStorage.setItem('priceit_deleted_'+currentUid, JSON.stringify(deleted));
+  renderDeletedList();
+  renderSidebar();
+  subscribeActive();
+}
+
+// ── Feedback ───────────────────────────────────────────────────────────────
+let feedbackType = 'general';
+function openFeedback(){ document.getElementById('feedback-overlay').classList.add('open'); }
+function closeFeedback(){
+  document.getElementById('feedback-overlay').classList.remove('open');
+  document.getElementById('feedback-text').value='';
+  document.getElementById('feedback-status').textContent='';
+}
+function setFeedbackType(btn, type){
+  feedbackType=type;
+  document.querySelectorAll('.feedback-type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+async function submitFeedback(){
+  const text = document.getElementById('feedback-text').value.trim();
+  if(!text){ document.getElementById('feedback-status').textContent='Please write something first.'; return; }
+  const user = window._currentUser;
+  await dbSet('feedback/'+Date.now(), {
+    type: feedbackType, text, email: user?.email||'', name: username||'', ts: Date.now()
+  });
+  document.getElementById('feedback-status').textContent='Thanks! We got your message.';
+  document.getElementById('feedback-status').style.color='var(--accent)';
+  setTimeout(()=>closeFeedback(), 1500);
+}
+
+// ── What's New ─────────────────────────────────────────────────────────────
+function openWhatsNew(){ document.getElementById('whatsnew-overlay').classList.add('open'); }
+function closeWhatsNew(){ document.getElementById('whatsnew-overlay').classList.remove('open'); }
 document.getElementById('item-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('item-age').focus();});
 document.getElementById('item-age').addEventListener('keydown',e=>{if(e.key==='Enter')computeItem();});
 document.getElementById('new-list-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmNewList();if(e.key==='Escape')closeNewListModal();});
