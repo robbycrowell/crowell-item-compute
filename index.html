@@ -2027,13 +2027,13 @@ async function exportPDF(mode){
       if(isPricing){
         rowsHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.name}${itemQty(item)>1?' <span style=\'font-size:11px;color:#888;\'>(×'+itemQty(item)+')</span>':''}${item.comment?'<br><span style="font-size:11px;color:#888;font-style:italic;">'+item.comment+'</span>':''}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">${item.age}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#2a7a5c;font-weight:600;">${item.rawCurrent?fmtMoney(itemEffectiveCurrent(item)):'—'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#5a7a2a;font-weight:600;">${item.rawReplace||item.customPrice?fmtMoney(itemEffectiveReplace(item)):'—'}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#999;">${item.addedBy||''}</td></tr>`;
       } else {
-        rowsHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.name}${itemQty(item)>1?' <span style=\'font-size:11px;color:#888;\'>(×'+itemQty(item)+')</span>':''}${item.comment?'<br><span style="font-size:11px;color:#888;font-style:italic;">'+item.comment+'</span>':''}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">${item.age}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">□ Checked</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#999;">${item.addedBy||''}</td></tr>`;
+        rowsHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;">${item.name}${itemQty(item)>1?' <span style=\'font-size:11px;color:#888;\'>(×'+itemQty(item)+')</span>':''}${item.comment?'<br><span style="font-size:11px;color:#888;font-style:italic;">'+item.comment+'</span>':''}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#666;">${item.age}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#999;">${item.addedBy||''}</td></tr>`;
       }
     });
 
     const theadHTML = isPricing
       ? `<tr style="background:#fafafa;"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ITEM</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">AGE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">CURRENT VALUE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">REPLACEMENT COST</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ADDED BY</th></tr>`
-      : `<tr style="background:#fafafa;"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ITEM</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">AGE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">CONDITION</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ADDED BY</th></tr>`;
+      : `<tr style="background:#fafafa;"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ITEM</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">AGE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">ADDED BY</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #eee;">NOTES</th></tr>`;
 
     const tfootHTML = isPricing
       ? `<tfoot><tr style="background:#f9ffe0;"><td colspan="2" style="padding:9px 10px;font-size:12px;font-weight:700;color:#555;">Room Total (${included.length} items)</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#2a7a5c;">$${sectionCurrent.toLocaleString()}</td><td style="padding:9px 10px;font-size:13px;font-weight:700;color:#5a7a2a;">$${sectionReplace.toLocaleString()}</td><td></td></tr></tfoot>`
@@ -2301,7 +2301,7 @@ async function exportXLSX(mode){
   if(isPricing){
     rows.push(['Room','Item','Age','Qty','Current Value','Replacement Cost','Added By','Notes']);
   } else {
-    rows.push(['Room','Item','Age','Qty','Condition','Added By','Notes','']);
+    rows.push(['Room','Item','Age','Qty','Added By','Notes']);
   }
 
   let grandCurrent=0,grandReplace=0,grandCount=0;
@@ -2321,7 +2321,7 @@ async function exportXLSX(mode){
       if(isPricing){
         rows.push([section.name, item.name||'', item.age||'', qty, cur, rep, item.addedBy||'', item.comment||'']);
       } else {
-        rows.push([section.name, item.name||'', item.age||'', qty, '', item.addedBy||'', item.comment||'', '']);
+        rows.push([section.name, item.name||'', item.age||'', qty, item.addedBy||'', item.comment||'']);
       }
     });
 
