@@ -151,7 +151,7 @@ textarea:focus{border-color:var(--accent);}
 .item-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .item-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
 .item-age-badge{font-family:'DM Mono',monospace;font-size:10px;background:#222;color:var(--muted);padding:2px 7px;border-radius:20px;}
-.item-by{font-size:10px;color:#555;margin-left:auto;}
+.item-by{font-size:10px;color:#999;margin-left:auto;letter-spacing:0.2px;}
 .item-values{display:flex;gap:18px;margin-top:7px;}
 .val-block{display:flex;flex-direction:column;gap:2px;}
 .val-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
@@ -823,19 +823,38 @@ textarea:focus{border-color:var(--accent);}
       <div class="total-group"><span class="total-label">Current Value</span><span class="total-val-current" id="total-current">$0</span></div>
       <div class="total-group"><span class="total-label">Replacement Cost</span><span class="total-val-replace" id="total-replace">$0</span></div>
       <div class="total-group" id="total-item-count" style="display:none"><span class="total-label">Items</span><span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text)" id="total-items">0</span></div>
-      <div style="margin-left:auto;display:flex;gap:6px;">
+      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
         <button onclick="exportPDF('inventory')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-          📋 Inventory Report
+          📋 Inventory PDF
         </button>
         <button onclick="exportPDF('pricing')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-          💰 Pricing Report
+          💰 Pricing PDF
+        </button>
+        <button onclick="exportXLSX('inventory')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          📊 Inventory XLS
+        </button>
+        <button onclick="exportXLSX('pricing')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          📊 Pricing XLS
         </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Members Modal -->
+<!-- Edit Item Modal -->
+<div class="modal-overlay" id="edit-item-modal">
+  <div class="modal">
+    <h3>✏️ Edit & Re-price</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Correct the item name or age and we'll look up the pricing again.</p>
+    <div class="auth-field"><label>Item Name</label><input type="text" id="edit-item-name" placeholder="e.g. TaylorMade M3 Driver" maxlength="100"/></div>
+    <div class="auth-field" style="margin-top:8px;"><label>Age</label><input type="text" id="edit-item-age" placeholder="e.g. 3 years" maxlength="50"/></div>
+    <div id="edit-item-status" style="font-size:12px;color:var(--muted);min-height:18px;margin-top:6px;"></div>
+    <div class="modal-btns" style="margin-top:12px;">
+      <button class="btn-ghost" onclick="closeEditItem()">Cancel</button>
+      <button class="compute-btn" id="edit-item-btn" onclick="submitEditItem()">Re-price</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="members-modal">
   <div class="modal">
     <h3>👥 Members</h3>
@@ -1699,6 +1718,7 @@ function buildItemCard(item,listId,readOnly){
         ${!readOnly?`<div class="comment-row"><button class="comment-toggle-btn" onclick="toggleCommentBox('${item.id}')">${item.comment?'Edit note':'+ Add note'}</button><div class="comment-box" id="commentbox-${item.id}"><textarea class="textarea" id="commenttext-${item.id}" placeholder="Add a note...">${escHtml(item.comment||'')}</textarea><button class="comment-save-btn" onclick="saveComment('${listId}','${item.id}')">Save note</button></div></div>`:''}
       </div>
       <div class="item-actions">
+        ${!readOnly?`<button class="icon-btn" onclick="openEditItem('${listId}','${item.id}')" title="Edit & re-price" style="color:var(--muted);font-size:12px;">✏️</button>`:''}
         ${!readOnly?`<button class="icon-btn" onclick="deleteItem('${listId}','${item.id}')" title="Delete">✕</button>`:''}
       </div>
     </div>
@@ -2165,6 +2185,114 @@ document.getElementById('signup-name').addEventListener('keydown',e=>{if(e.key==
 document.getElementById('signup-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('signup-password').focus();});
 document.getElementById('signup-password').addEventListener('keydown',e=>{if(e.key==='Enter')doEmailSignup();});
 document.getElementById('pro-access-code').addEventListener('keydown',e=>{if(e.key==='Enter')redeemAccessCode();});
+document.getElementById('edit-item-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('edit-item-age').focus();if(e.key==='Escape')closeEditItem();});
+document.getElementById('edit-item-age').addEventListener('keydown',e=>{if(e.key==='Enter')submitEditItem();if(e.key==='Escape')closeEditItem();});
+
+// ── Edit & Re-price Item ───────────────────────────────────────────────────
+let _editListId=null, _editItemId=null;
+
+function openEditItem(listId, itemId){
+  _editListId=listId; _editItemId=itemId;
+  const card=document.getElementById('card-'+itemId);
+  const nameEl=card?.querySelector('.item-name');
+  const ageEl=card?.querySelector('.item-age-badge');
+  document.getElementById('edit-item-name').value = nameEl?.textContent||'';
+  document.getElementById('edit-item-age').value = ageEl?.textContent||'';
+  document.getElementById('edit-item-status').textContent='';
+  document.getElementById('edit-item-btn').disabled=false;
+  document.getElementById('edit-item-btn').textContent='Re-price';
+  document.getElementById('edit-item-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('edit-item-name').focus(),50);
+}
+function closeEditItem(){ document.getElementById('edit-item-modal').classList.remove('open'); _editListId=null; _editItemId=null; }
+
+async function submitEditItem(){
+  const name=document.getElementById('edit-item-name').value.trim();
+  const age=document.getElementById('edit-item-age').value.trim();
+  const statusEl=document.getElementById('edit-item-status');
+  const btn=document.getElementById('edit-item-btn');
+  if(!name||!age){ statusEl.textContent='Please fill in both fields.'; return; }
+  btn.disabled=true; btn.textContent='Looking up…';
+  statusEl.textContent='Searching current market data…';
+  statusEl.style.color='var(--muted)';
+  try{
+    const existing = await dbGet('lists/'+_editListId+'/items/'+_editItemId);
+    await dbSet('lists/'+_editListId+'/items/'+_editItemId+'/loading', true);
+    const result = await callClaude(name, age);
+    await dbSet('lists/'+_editListId+'/items/'+_editItemId, {
+      id:_editItemId, name, age,
+      addedBy: existing?.addedBy||username,
+      ts: existing?.ts||Date.now(),
+      qty: existing?.qty||1,
+      comment: existing?.comment||'',
+      included: existing?.included!==false,
+      loading:false, ...result
+    });
+    statusEl.textContent='✓ Updated!'; statusEl.style.color='var(--accent)';
+    setTimeout(()=>closeEditItem(), 700);
+  } catch(e){
+    statusEl.textContent='Lookup failed. Try again.'; statusEl.style.color='var(--danger)';
+    btn.disabled=false; btn.textContent='Re-price';
+    await dbSet('lists/'+_editListId+'/items/'+_editItemId+'/loading', false);
+  }
+}
+
+// ── Excel / CSV Export ─────────────────────────────────────────────────────
+async function exportXLSX(mode){
+  if(!canExportPDF()){openProGate('pdf');return;}
+  const list=getList(activeListId);
+  if(!list){alert('Please select a list first.');return;}
+  const children=childrenOf(activeListId);
+  const sections=[];
+  const parentData=await dbGet('lists/'+activeListId);
+  const parentItems=parentData?.items?Object.values(parentData.items).filter(i=>!i.loading):[];
+  if(parentItems.length>0) sections.push({name:list.name+' (General)',items:parentItems});
+  for(const child of children){
+    const data=await dbGet('lists/'+child.id);
+    const items=data?.items?Object.values(data.items).filter(i=>!i.loading):[];
+    sections.push({name:child.name,items});
+  }
+  if(sections.length===0){alert('No items to export yet.');return;}
+  const isPricing=mode==='pricing';
+  const date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  let csv='';
+  csv+=isPricing?'Price It — Pricing Report\n':'Price It — Inventory Report\n';
+  csv+=`List: ${list.name}\nDate: ${date}\n\n`;
+  csv+=isPricing
+    ?'Room,Item,Age,Qty,Current Value,Replacement Cost,Added By,Notes\n'
+    :'Room,Item,Age,Qty,Condition,Added By,Notes\n';
+  let grandCurrent=0,grandReplace=0,grandCount=0;
+  sections.forEach(section=>{
+    const included=section.items.filter(i=>i.included!==false);
+    included.forEach(item=>{
+      const qty=itemQty(item);
+      const cur=itemEffectiveCurrent(item);
+      const rep=itemEffectiveReplace(item);
+      grandCurrent+=cur;grandReplace+=rep;grandCount+=qty;
+      const n=`"${(item.name||'').replace(/"/g,'""')}"`;
+      const note=`"${(item.comment||'').replace(/"/g,'""')}"`;
+      const by=`"${(item.addedBy||'').replace(/"/g,'""')}"`;
+      const room=`"${section.name.replace(/"/g,'""')}"`;
+      if(isPricing) csv+=`${room},${n},"${item.age}",${qty},$${cur.toLocaleString()},$${rep.toLocaleString()},${by},${note}\n`;
+      else csv+=`${room},${n},"${item.age}",${qty},"",${by},${note}\n`;
+    });
+    if(isPricing){
+      const sc=included.reduce((s,i)=>s+itemEffectiveCurrent(i),0);
+      const sr=included.reduce((s,i)=>s+itemEffectiveReplace(i),0);
+      csv+=`"SUBTOTAL — ${section.name.replace(/"/g,'""')}",,,"${included.length} items",$${sc.toLocaleString()},$${sr.toLocaleString()},"",""\n`;
+    }
+    csv+='\n';
+  });
+  csv+=isPricing
+    ?`\nGRAND TOTAL,,,"${grandCount} items",$${grandCurrent.toLocaleString()},$${grandReplace.toLocaleString()},"",""\n`
+    :`\nGRAND TOTAL,,,"${grandCount} items","","",""\n`;
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`PriceIt_${isPricing?'Pricing':'Inventory'}_${list.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
