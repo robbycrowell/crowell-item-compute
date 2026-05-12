@@ -2289,37 +2289,68 @@ async function exportXLSX(mode){
   if(sections.length===0){alert('No items to export yet.');return;}
   const isPricing=mode==='pricing';
   const date=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
-  let csv='';
-  csv+=isPricing?'Price It — Pricing Report\n':'Price It — Inventory Report\n';
-  csv+=`List: ${list.name}\nDate: ${date}\n\n`;
-  csv+=isPricing
-    ?'Room,Item,Age,Qty,Current Value,Replacement Cost,Added By,Notes\n'
-    :'Room,Item,Age,Qty,Condition,Added By,Notes\n';
+
+  const rows=[];
+  // Header rows
+  rows.push([isPricing?'Price It — Pricing Report':'Price It — Inventory Report','','','','','','','']);
+  rows.push(['List:',list.name,'','','','','','']);
+  rows.push(['Date:',date,'','','','','','']);
+  rows.push(['','','','','','','','']);
+
+  // Column headers
+  if(isPricing){
+    rows.push(['Room','Item','Age','Qty','Current Value','Replacement Cost','Added By','Notes']);
+  } else {
+    rows.push(['Room','Item','Age','Qty','Condition','Added By','Notes','']);
+  }
+
   let grandCurrent=0,grandReplace=0,grandCount=0;
+
   sections.forEach(section=>{
     const included=section.items.filter(i=>i.included!==false);
+    let secCurrent=0,secReplace=0;
+
     included.forEach(item=>{
       const qty=itemQty(item);
-      const cur=itemEffectiveCurrent(item);
-      const rep=itemEffectiveReplace(item);
-      grandCurrent+=cur;grandReplace+=rep;grandCount+=qty;
-      const n=`"${(item.name||'').replace(/"/g,'""')}"`;
-      const note=`"${(item.comment||'').replace(/"/g,'""')}"`;
-      const by=`"${(item.addedBy||'').replace(/"/g,'""')}"`;
-      const room=`"${section.name.replace(/"/g,'""')}"`;
-      if(isPricing) csv+=`${room},${n},"${item.age}",${qty},$${cur.toLocaleString()},$${rep.toLocaleString()},${by},${note}\n`;
-      else csv+=`${room},${n},"${item.age}",${qty},"",${by},${note}\n`;
+      const cur=item.rawCurrent ? Math.round(itemEffectiveCurrent(item)*100)/100 : '';
+      const rep=item.rawReplace||item.customPrice ? Math.round(itemEffectiveReplace(item)*100)/100 : '';
+      if(cur!=='') { grandCurrent+=cur; secCurrent+=cur; }
+      if(rep!=='') { grandReplace+=rep; secReplace+=rep; }
+      grandCount+=qty;
+
+      if(isPricing){
+        rows.push([section.name, item.name||'', item.age||'', qty, cur, rep, item.addedBy||'', item.comment||'']);
+      } else {
+        rows.push([section.name, item.name||'', item.age||'', qty, '', item.addedBy||'', item.comment||'', '']);
+      }
     });
-    if(isPricing){
-      const sc=included.reduce((s,i)=>s+itemEffectiveCurrent(i),0);
-      const sr=included.reduce((s,i)=>s+itemEffectiveReplace(i),0);
-      csv+=`"SUBTOTAL — ${section.name.replace(/"/g,'""')}",,,"${included.length} items",$${sc.toLocaleString()},$${sr.toLocaleString()},"",""\n`;
+
+    // Section subtotal
+    if(isPricing && included.length>0){
+      rows.push([`SUBTOTAL — ${section.name}`, '', '', included.length+' items', secCurrent||'', secReplace||'', '', '']);
     }
-    csv+='\n';
+    rows.push(['','','','','','','','']);
   });
-  csv+=isPricing
-    ?`\nGRAND TOTAL,,,"${grandCount} items",$${grandCurrent.toLocaleString()},$${grandReplace.toLocaleString()},"",""\n`
-    :`\nGRAND TOTAL,,,"${grandCount} items","","",""\n`;
+
+  // Grand total
+  if(isPricing){
+    rows.push(['GRAND TOTAL','','',grandCount+' items',grandCurrent||'',grandReplace||'','','']);
+  } else {
+    rows.push(['GRAND TOTAL','','',grandCount+' items','','','','']);
+  }
+
+  // Convert to CSV — numbers stay as numbers (no $ sign so Excel treats as numeric)
+  const csv = rows.map(row=>
+    row.map(cell=>{
+      if(cell===null||cell===undefined||cell==='') return '';
+      if(typeof cell === 'number') return cell;
+      // Escape strings with commas or quotes
+      const s = String(cell);
+      if(s.includes(',')||s.includes('"')||s.includes('\n')) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    }).join(',')
+  ).join('\n');
+
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
