@@ -1594,7 +1594,7 @@ async function renderCombinedView(silent=false){
   if(parentItems.length>0){
     const div=document.createElement('div');div.className='room-divider';div.textContent=list?.name+' (general)';newGrid.appendChild(div);
     parentItems.forEach(item=>{
-      if(!item.loading&&item.rawCurrent&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}
+      if(!item.loading&&(item.rawCurrent||item.customPrice)&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}
       newGrid.appendChild(buildItemCard(item,snapId,false));
     });
   }
@@ -1627,7 +1627,7 @@ async function renderCombinedView(silent=false){
     }
     newGrid.appendChild(div);
     if(items.length===0){const empty=document.createElement('div');empty.style.cssText='font-size:12px;color:#444;padding:6px 0 10px;';empty.textContent='No items yet';newGrid.appendChild(empty);}
-    else{items.forEach(item=>{if(!item.loading&&item.rawCurrent&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}newGrid.appendChild(buildItemCard(item,meta.id,true));});}
+    else{items.forEach(item=>{if(!item.loading&&(item.rawCurrent||item.customPrice)&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}newGrid.appendChild(buildItemCard(item,meta.id,true));});}
   });
   if(newGrid.children.length===0){area.innerHTML=`<div class="empty-state"><div class="empty-icon">🏠</div><p>No items in any room yet</p><small>Select a room to add items</small></div>`;}
   else{area.innerHTML='';area.appendChild(newGrid);}
@@ -1662,7 +1662,7 @@ function renderSingleList(listData){
   const grid=area.querySelector('.items-grid');
   let totalCurrent=0,totalReplace=0,totalItems=0;
   items.forEach(item=>{
-    if(!item.loading&&item.rawCurrent&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}
+    if(!item.loading&&(item.rawCurrent||item.customPrice)&&item.included!==false){totalCurrent+=itemEffectiveCurrent(item);totalReplace+=itemEffectiveReplace(item);totalItems+=itemQty(item);}
     grid.appendChild(buildItemCard(item,activeListId,false));
   });
   updateTotals(totalCurrent,totalReplace,totalItems);
@@ -2016,7 +2016,7 @@ async function exportPDF(mode){
 
   sections.forEach(section => {
     const included = isPricing
-      ? section.items.filter(i => i.included !== false && i.rawCurrent)
+      ? section.items.filter(i => i.included !== false && (i.rawCurrent || i.customPrice))
       : section.items.filter(i => i.included !== false);
     const sectionCurrent = included.reduce((s,i)=>s+itemEffectiveCurrent(i),0);
     const sectionReplace = included.reduce((s,i)=>s+itemEffectiveReplace(i),0);
