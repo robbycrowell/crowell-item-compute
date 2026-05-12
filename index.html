@@ -823,20 +823,41 @@ textarea:focus{border-color:var(--accent);}
       <div class="total-group"><span class="total-label">Current Value</span><span class="total-val-current" id="total-current">$0</span></div>
       <div class="total-group"><span class="total-label">Replacement Cost</span><span class="total-val-replace" id="total-replace">$0</span></div>
       <div class="total-group" id="total-item-count" style="display:none"><span class="total-label">Items</span><span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text)" id="total-items">0</span></div>
-      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
-        <button onclick="exportPDF('inventory')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-          📋 Inventory PDF
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button onclick="openExportPrompt('inventory')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          📋 Inventory Report
         </button>
-        <button onclick="exportPDF('pricing')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-          💰 Pricing PDF
-        </button>
-        <button onclick="exportXLSX('inventory')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-          📊 Inventory XLS
-        </button>
-        <button onclick="exportXLSX('pricing')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-          📊 Pricing XLS
+        <button onclick="openExportPrompt('pricing')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          💰 Pricing Report
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Format Modal -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal" style="max-width:300px;">
+    <h3 id="export-modal-title">Export Report</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Choose your export format.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button id="export-pdf-btn" class="compute-btn" style="display:flex;align-items:center;gap:10px;justify-content:flex-start;padding:12px 16px;" onclick="handleExport('pdf')">
+        <span style="font-size:18px;">📄</span>
+        <div style="text-align:left;">
+          <div style="font-size:13px;font-weight:700;">PDF</div>
+          <div style="font-size:11px;opacity:0.7;font-family:'DM Sans',sans-serif;">Opens in browser, print or save</div>
+        </div>
+      </button>
+      <button id="export-xlsx-btn" class="btn-ghost" style="display:flex;align-items:center;gap:10px;justify-content:flex-start;padding:12px 16px;" onclick="handleExport('xlsx')">
+        <span style="font-size:18px;">📊</span>
+        <div style="text-align:left;">
+          <div style="font-size:13px;font-weight:700;">Excel / CSV</div>
+          <div style="font-size:11px;opacity:0.7;">Downloads a .csv file, opens in Excel</div>
+        </div>
+      </button>
+    </div>
+    <div class="modal-btns" style="margin-top:14px;">
+      <button class="btn-ghost" onclick="closeExportModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -1973,7 +1994,6 @@ function switchTab(tab){
 
 // ── PDF Export (Pro only) ──────────────────────────────────────────────────
 async function exportPDF(mode){
-  if(!canExportPDF()){openProGate('pdf');return;}
   const list = getList(activeListId);
   if(!list){alert('Please select a list first.');return;}
   const children = childrenOf(activeListId);
@@ -2188,6 +2208,21 @@ document.getElementById('pro-access-code').addEventListener('keydown',e=>{if(e.k
 document.getElementById('edit-item-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('edit-item-age').focus();if(e.key==='Escape')closeEditItem();});
 document.getElementById('edit-item-age').addEventListener('keydown',e=>{if(e.key==='Enter')submitEditItem();if(e.key==='Escape')closeEditItem();});
 
+// ── Export Prompt ──────────────────────────────────────────────────────────
+let _exportMode = 'pricing';
+function openExportPrompt(mode){
+  if(!canExportPDF()){openProGate('pdf');return;}
+  _exportMode = mode;
+  document.getElementById('export-modal-title').textContent = mode==='pricing' ? '💰 Pricing Report' : '📋 Inventory Report';
+  document.getElementById('export-modal').classList.add('open');
+}
+function closeExportModal(){ document.getElementById('export-modal').classList.remove('open'); }
+function handleExport(format){
+  closeExportModal();
+  if(format==='pdf') exportPDF(_exportMode);
+  else exportXLSX(_exportMode);
+}
+
 // ── Edit & Re-price Item ───────────────────────────────────────────────────
 let _editListId=null, _editItemId=null;
 
@@ -2239,7 +2274,6 @@ async function submitEditItem(){
 
 // ── Excel / CSV Export ─────────────────────────────────────────────────────
 async function exportXLSX(mode){
-  if(!canExportPDF()){openProGate('pdf');return;}
   const list=getList(activeListId);
   if(!list){alert('Please select a list first.');return;}
   const children=childrenOf(activeListId);
