@@ -151,6 +151,12 @@ textarea:focus{border-color:var(--accent);}
 .item-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .item-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
 .item-age-badge{font-family:'DM Mono',monospace;font-size:10px;background:#222;color:var(--muted);padding:2px 7px;border-radius:20px;}
+.confidence-badge{font-family:'DM Mono',monospace;font-size:10px;padding:2px 7px;border-radius:20px;letter-spacing:1px;cursor:default;}
+.conf-5{color:#4cf0b0;background:rgba(76,240,176,0.1);}
+.conf-4{color:#c8f04c;background:rgba(200,240,76,0.1);}
+.conf-3{color:#f0c84c;background:rgba(240,200,76,0.1);}
+.conf-2{color:#f0914c;background:rgba(240,145,76,0.1);}
+.conf-1{color:#f04c4c;background:rgba(240,76,76,0.1);}
 .item-by{font-size:10px;color:#999;margin-left:auto;letter-spacing:0.2px;}
 .item-values{display:flex;gap:18px;margin-top:7px;}
 .val-block{display:flex;flex-direction:column;gap:2px;}
@@ -1765,6 +1771,7 @@ function buildItemCard(item,listId,readOnly){
         <div class="item-card-top">
           <span class="item-name">${escHtml(item.name)}</span>
           <span class="item-age-badge">${escHtml(item.age)}</span>
+          ${item.confidence?`<span class="confidence-badge conf-${item.confidence}" title="Pricing confidence ${item.confidence}/5">${'●'.repeat(item.confidence)}${'○'.repeat(5-item.confidence)}</span>`:''}
           <span class="item-by">by ${escHtml(item.addedBy||'?')}</span>
         </div>
         ${included?`<div class="item-values">
