@@ -8,4 +8,4 @@ Full-stack web app for itemizing and pricing household possessions for insurance
 - Integrated Anthropic API for automated price lookup
 
 ## Built with
-HTML, Firebase
+HTML, Firebase, Anthropic API and JavaScript/CSS
